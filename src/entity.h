@@ -10,8 +10,8 @@ Functions and stuff for handling entities
 #define MAXENTITIES		255
 #define MAXSTATES		20
 
-enum STATES {ST_IDLE, ST_WALK, ST_RUN, ST_SKID, ST_JUMP, ST_FLAP, ST_DYING};
-enum FORMS {FM_NONE, FM_BALLOON};
+enum STATES {ST_IDLE, ST_WALK, ST_RUN, ST_SKID, ST_JUMP, ST_FLAP, ST_PUMP, ST_DYING};
+enum FORMS {FM_NONE, FM_BALLOON1, FM_BALLOON2};
 
 typedef struct ENTITY_T
 {
@@ -31,6 +31,7 @@ typedef struct ENTITY_T
 	int uCheck, dCheck, lCheck, rCheck;		/*Collision checks*/
 	int isRight;				/*Which way is this facing*/
 	int delay;					/*Animation delay*/
+	int ct;						/*Counter*/
 	int tang;					/*Is this tangible*/
 	
 	int health;					/*Current health*/
