@@ -150,26 +150,26 @@ void CheckCollisions(Entity *self, SDL_Rect box1, SDL_Rect *collision)
 		{
 			if(EntityList[i].tang)		/*Collision with tangible object*/
 			{
-				if((abs((box1.y + box1.h) - box2.y) <= abs((box1.x + box1.w) - box2.x)) && (abs((box1.y + box1.h) - box2.y) <= abs((box2.x + box2.w) - box1.x)) && (abs((box1.y + box1.h) - box2.y) <= abs((box2.y + box2.h) - box1.y)) && (self->vy >= EntityList[i].vy))
+				if((abs((box1.y + box1.h) - box2.y) <= 10) && (abs((box1.y + box1.h) - box2.y) <= abs((box1.x + box1.w) - box2.x)) && (abs((box1.y + box1.h) - box2.y) <= abs((box2.x + box2.w) - box1.x)) && (abs((box1.y + box1.h) - box2.y) <= abs((box2.y + box2.h) - box1.y)) && (self->vy >= EntityList[i].vy) && EntityList[i].uCheck)
 				{
 					self->uCheck = 1;
 					collision->y = box2.y;
 				}
-				else if((abs((box1.x + box1.w) - box2.x) <= abs((box2.x + box2.w) - box1.x)) && (abs((box1.x + box1.w) - box2.x) <= abs((box2.y + box2.h) - box1.y)))
+				else if((abs((box1.x + box1.w) - box2.x) <= 10) && (abs((box1.x + box1.w) - box2.x) <= abs((box2.x + box2.w) - box1.x)) && (abs((box1.x + box1.w) - box2.x) <= abs((box2.y + box2.h) - box1.y)) && (self->vx >= EntityList[i].vx) && EntityList[i].lCheck)
 					 {	 
 						 self->lCheck = 1;
 						 collision->x = box2.x;
 					 }
-					 else if((abs((box2.x + box2.w) - box1.x) <= abs((box2.y + box2.h) - box1.y)))
+					 else if((abs((box2.x + box2.w) - box1.x) <= 10) && (abs((box2.x + box2.w) - box1.x) <= abs((box2.y + box2.h) - box1.y)) && (self->vx <= EntityList[i].vx) && EntityList[i].rCheck)
 						  {	  
 							  self->rCheck = 1;
 							  collision->w = box2.x + box2.w;
 						  }
-						  else
-						  {
-							  self->dCheck = 1;
-							  collision->h = box2.y + box2.h;
-						  }
+						  else if((abs((box2.y + box2.h) - box1.y) <= 10) && (self->vy <= EntityList[i].vy) && EntityList[i].dCheck)
+							   {
+								   self->dCheck = 1;
+								   collision->h = box2.y + box2.h;
+							   }
 			}
 		}
 	}
@@ -184,6 +184,7 @@ Entity *MakePlayer(int x, int y)
 	player->sprite = LoadSprite("images/player.png",60,52);
 	player->think = PlayerThink;
 	player->shown = 1;
+	player->layer = 2;
 	player->frame = 0;
 	player->state = ST_IDLE;
 	player->form = FM_NONE;
@@ -327,6 +328,7 @@ void PlayerThink(Entity *self)
 				else
 				{
 					self->state = ST_IDLE;
+					self->ct = 0;
 				}
 			}
 
@@ -423,7 +425,7 @@ void PlayerThink(Entity *self)
 				}
 			}
 
-			if(isKeyPressed(SDLK_p) && self->uCheck)	/*Pump*/
+			if(isKeyPressed(SDLK_p) && self->uCheck)	/*(Take out / Put away) pump*/
 			{
 				if(self->state != ST_PUMP)
 				{
@@ -438,7 +440,7 @@ void PlayerThink(Entity *self)
 				}
 			}
 
-			if((self->state == ST_PUMP) && isKeyPressed(SDLK_s))
+			if((self->state == ST_PUMP) && isKeyPressed(SDLK_s))	/*Pump*/
 			{
 				self->frame = 9;
 				self->delay = 3;
@@ -449,6 +451,13 @@ void PlayerThink(Entity *self)
 					self->state = ST_IDLE;
 					self->ct = 0;
 				}
+			}
+
+			if(isKeyPressed(SDLK_o))			/*Detach*/
+			{
+				self->form = FM_NONE;
+				self->owner->owner = NULL;
+				self->owner = NULL;
 			}
 		}
 
@@ -530,6 +539,13 @@ void PlayerThink(Entity *self)
 					self->delay = 4;
 				}
 			}
+
+			if(isKeyPressed(SDLK_o))			/*Detach*/
+			{
+				self->form = FM_NONE;
+				self->owner->owner = NULL;
+				self->owner = NULL;
+			}
 		}
 	}
 
@@ -610,6 +626,7 @@ Entity *MakeBalloon()
 	balloon->sprite = LoadSprite("images/balloons.png", 84, 60);
 	balloon->think = BalloonThink;
 	balloon->shown = 1;
+	balloon->layer = 1;
 	balloon->frame = 0;
 	balloon->sx = Player->sx - 12;
 	balloon->sy = Player->sy - 48;
@@ -618,22 +635,44 @@ Entity *MakeBalloon()
 	balloon->bbox.w = 36;
 	balloon->bbox.h = 36;
 	balloon->delay = 16;
-	balloon->tang = 0;
+	balloon->tang = 1;
+	balloon->uCheck = 1;
+	balloon->lCheck = 1;
+	balloon->rCheck = 1;
+	balloon->dCheck = 0;
 	balloon->owner = Player;
 	return balloon;
 }
 
 void BalloonThink(Entity *self)
 {
-	if(Player->form == FM_BALLOON2)self->frame -= 16;
-	if(!Player->isRight)self->frame -= 8;
-	
-	self->sx = Player->sx -12;
-	self->sy = Player->sy - 48;
+	if(self->owner == Player)
+	{
+		self->state = Player->state;
+		self->form = Player->form;
+		self->isRight = Player->isRight;
+		self->vx = Player->vx;
+		self->vy = Player->vy / 2.5;
+		self->sx = Player->sx - 12;
+		self->sy = Player->sy - 48;
+	}
+	else
+	{
+		self->state = ST_JUMP;
+		self->vx /= 1.02;
+		self->vy -= 0.07;
 
+		self->sx += self->vx;
+		self->sy += self->vy;
+
+		if(self->sy < (yOffset - self->sprite->h))FreeEntity(self);
+	}
+
+	if(self->form == FM_BALLOON2)self->frame -= 16;
+	if(!self->isRight)self->frame -= 8;
 
 	/*Animations*/
-	switch(Player->state)
+	switch(self->state)
 	{
 		case ST_IDLE:
 			if(!self->delay)
@@ -681,10 +720,13 @@ void BalloonThink(Entity *self)
 			self->frame = 5;
 			self->delay = 0;
 			break;
+		case ST_PUMP:
+			self->frame = 0;
+			break;
 	}
 
-	if(Player->form == FM_BALLOON2)self->frame += 16;
-	if(!Player->isRight)self->frame += 8;
+	if(self->form == FM_BALLOON2)self->frame += 16;
+	if(!self->isRight)self->frame += 8;
 }
 
 Entity *BuildBrick(int x, int y)
@@ -702,6 +744,10 @@ Entity *BuildBrick(int x, int y)
 	brick->bbox.w = 32;
 	brick->bbox.h = 32;
 	brick->tang = 1;
+	brick->uCheck = 1;
+	brick->lCheck = 1;
+	brick->rCheck = 1;
+	brick->dCheck = 1;
 	return brick;
 }
 
@@ -720,6 +766,10 @@ Entity *BuildColumn(int x, int y)
 	column->bbox.w = 64;
 	column->bbox.h = 64;
 	column->tang = 1;
+	column->uCheck = 1;
+	column->lCheck = 0;
+	column->rCheck = 1;
+	column->dCheck = 1;
 	return column;
 }
 
