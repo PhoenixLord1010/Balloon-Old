@@ -153,6 +153,7 @@ void CheckCollisions(Entity *self, SDL_Rect box1, SDL_Rect *collision)
 				if((abs((box1.y + box1.h) - box2.y) <= 10) && (abs((box1.y + box1.h) - box2.y) <= abs((box1.x + box1.w) - box2.x)) && (abs((box1.y + box1.h) - box2.y) <= abs((box2.x + box2.w) - box1.x)) && (abs((box1.y + box1.h) - box2.y) <= abs((box2.y + box2.h) - box1.y)) && (self->vy >= EntityList[i].vy) && EntityList[i].uCheck)
 				{
 					self->uCheck = 1;
+					self->below = &EntityList[i];
 					collision->y = box2.y;
 				}
 				else if((abs((box1.x + box1.w) - box2.x) <= 10) && (abs((box1.x + box1.w) - box2.x) <= abs((box2.x + box2.w) - box1.x)) && (abs((box1.x + box1.w) - box2.x) <= abs((box2.y + box2.h) - box1.y)) && (self->vx >= EntityList[i].vx) && EntityList[i].lCheck)
@@ -165,10 +166,14 @@ void CheckCollisions(Entity *self, SDL_Rect box1, SDL_Rect *collision)
 							  self->rCheck = 1;
 							  collision->w = box2.x + box2.w;
 						  }
-						  else if((abs((box2.y + box2.h) - box1.y) <= 10) && (self->vy <= EntityList[i].vy) && EntityList[i].dCheck)
+						  else if((abs((box2.y + box2.h) - box1.y) <= 10) && (self->vy <= EntityList[i].vy))
 							   {
-								   self->dCheck = 1;
-								   collision->h = box2.y + box2.h;
+								   self->above = &EntityList[i];
+								   if(EntityList[i].dCheck)
+								   {
+									   self->dCheck = 1;
+									   collision->h = box2.y + box2.h;
+								   }
 							   }
 			}
 		}
@@ -194,6 +199,8 @@ Entity *MakePlayer(int x, int y)
 	player->bbox.y = 0;
 	player->bbox.w = 32;
 	player->bbox.h = 52;
+	player->below = player;
+	player->above = player;
 	player->isRight = 1;
 	player->delay = 0;
 	player->tang = 0;
@@ -260,118 +267,29 @@ void PlayerThink(Entity *self)
 		if((self->vx == 0) && self->uCheck && self->state != ST_PUMP)
 			self->state = ST_IDLE;
 
-		
+		if(self->wait > 0)self->wait--;
 
-		if(self->form == FM_NONE)
+		switch(self->form)
 		{
-			/*Gravity*/
-			if(self->vy <= gravity && !self->uCheck)
-				self->vy += 2;
+			case FM_NONE:
+				/*Gravity*/
+				if(self->vy <= gravity && !self->uCheck)
+					self->vy += 2;
 
-			/*Walk off ledge*/
-			if(uCheck2 && !self->uCheck)self->state = ST_JUMP;
+				/*Walk off ledge*/
+				if(uCheck2 && !self->uCheck)self->state = ST_JUMP;
 			
-			/*Player Inputs*/
-			if(((isKeyHeld(SDLK_a) && !self->rCheck) || (isKeyHeld(SDLK_d) && !self->lCheck)) && (self->state != ST_PUMP))
-			{
-				if(isKeyHeld(SDLK_a))							/*Move left*/
-				{
-					if(self->vx > -8)self->vx -= 0.8;
-					if(self->vx < 0)self->isRight = 0;
-				}
-				if(isKeyHeld(SDLK_d))							/*Move right*/
-				{
-					if(self->vx < 8)self->vx += 0.8;
-					if(self->vx > 0)self->isRight = 1;
-				}
-				if(self->uCheck && ((self->state != ST_WALK) && (self->state != ST_RUN)))	/*Initiate walk cycle*/
-				{
-					self->state = ST_WALK;
-					self->frame = 2;
-				}
-				if((abs(self->vx) >= 8) && (self->state == ST_WALK))self->state = ST_RUN;
-			}
-			else		/*Decelerates X Movement When Nothing's Pressed*/
-			{
-				if(abs(self->vx) > 0.7)
-				{
-					if(self->vx >= 0.7)self->vx -= 0.7;
-					if(self->vx <= -0.7)self->vx += 0.7;
-				}
-				else self->vx = 0;
-			}
-
-
-			if(isKeyPressed(SDLK_SPACE) && (self->state != ST_PUMP))			
-			{
-				if(self->uCheck)					/*Jump*/
-				{
-					self->vy = -20;
-					self->uCheck = 0;
-					self->state = ST_JUMP;
-				}
-				else if(self->state = ST_JUMP)		/*Flap*/
-				{
-					self->state = ST_FLAP;
-					self->delay = 2;
-				}
-			}
-
-			if(isKeyPressed(SDLK_p) && self->uCheck)	/*Pump*/
-			{
-				if(self->state != ST_PUMP)
-				{
-					self->state = ST_PUMP;
-					self->vx = 0;
-					self->delay = 0;
-				}
-				else
-				{
-					self->state = ST_IDLE;
-					self->ct = 0;
-				}
-			}
-
-			if((self->state == ST_PUMP) && isKeyPressed(SDLK_s))
-			{
-				self->frame = 9;
-				self->delay = 3;
-				self->ct++;
-				if(self->ct == 10)
-				{
-					self->owner = MakeBalloon();
-					self->form = FM_BALLOON1;
-					self->ct = 0;
-				}
-			}
-		}
-
-		if(self->form == FM_BALLOON1)
-		{
-			/*Gravity*/
-			if(self->vy <= gravity && !self->uCheck)
-				self->vy += 0.35;
-
-			/*Walk off ledge*/
-			if(uCheck2 && !self->uCheck)
-			{
-				self->state = ST_JUMP;
-				self->vx = int(self->vx) - (int(self->vx) % 2);
-			}
-			
-			/*Player Inputs*/
-			if(self->uCheck)
-			{
+				/*Player Inputs*/
 				if(((isKeyHeld(SDLK_a) && !self->rCheck) || (isKeyHeld(SDLK_d) && !self->lCheck)) && (self->state != ST_PUMP))
 				{
 					if(isKeyHeld(SDLK_a))							/*Move left*/
 					{
-						if(self->vx > -8)self->vx -= 0.6;
+						if(self->vx > -8)self->vx -= 0.8;
 						if(self->vx < 0)self->isRight = 0;
 					}
 					if(isKeyHeld(SDLK_d))							/*Move right*/
 					{
-						if(self->vx < 8)self->vx += 0.6;
+						if(self->vx < 8)self->vx += 0.8;
 						if(self->vx > 0)self->isRight = 1;
 					}
 					if(self->uCheck && ((self->state != ST_WALK) && (self->state != ST_RUN)))	/*Initiate walk cycle*/
@@ -383,169 +301,271 @@ void PlayerThink(Entity *self)
 				}
 				else		/*Decelerates X Movement When Nothing's Pressed*/
 				{
-					if(abs(self->vx) > 0.6)
+					if(abs(self->vx) > 0.7)
 					{
-						if(self->vx >= 0.6)self->vx -= 0.6;
-						if(self->vx <= -0.6)self->vx += 0.6;
+						if(self->vx >= 0.7)self->vx -= 0.7;
+						if(self->vx <= -0.7)self->vx += 0.7;
 					}
 					else self->vx = 0;
 				}
-			}
-			else
-			{
-				if(isKeyHeld(SDLK_a) || isKeyHeld(SDLK_d))
+
+
+				if(isKeyPressed(SDLK_SPACE) && (self->state != ST_PUMP))			
 				{
-					if(isKeyHeld(SDLK_a))							/*Move left*/
+					if(self->uCheck)					/*Jump*/
 					{
-						self->isRight = 0;
+						self->vy = -20;
+						self->uCheck = 0;
+						self->state = ST_JUMP;
 					}
-					if(isKeyHeld(SDLK_d))							/*Move right*/
+					else if(self->state = ST_JUMP)		/*Flap*/
 					{
-						self->isRight = 1;
+						self->state = ST_FLAP;
+						self->delay = 2;
 					}
 				}
-			}
 
-			if(isKeyPressed(SDLK_SPACE) && (self->state != ST_PUMP))			
-			{
-				if(self->uCheck)					/*Jump*/
+				if(isKeyPressed(SDLK_p) && self->uCheck)	/*Pump*/
 				{
-					self->vy = -6;
+					if(self->state != ST_PUMP)
+					{
+						self->state = ST_PUMP;
+						self->vx = 0;
+						self->delay = 0;
+					}
+					else
+					{
+						self->state = ST_IDLE;
+						self->ct = 0;
+					}
+				}
+
+				if((self->state == ST_PUMP) && isKeyPressed(SDLK_s))
+				{
+					self->frame = 9;
+					self->delay = 3;
+					self->ct++;
+					if(self->ct == 10)
+					{
+						self->owner = MakeBalloon();
+						self->form = FM_BALLOON1;
+						self->ct = 0;
+					}
+				}
+
+				if((self->above->form == FM_BALLOON1 || self->above->form == FM_BALLOON2) && (self->above->owner == NULL) && (self->wait == 0))		/*Reconnect with balloons*/
+				{
+					self->form = self->above->form;
+					self->owner = self->above;
+					self->above->owner = self;
 					self->vx = int(self->vx) - (int(self->vx) % 2);
-					self->uCheck = 0;
-					self->state = ST_JUMP;
+					self->vy = (self->vy + self->above->vy) / 2;
 				}
-				else if(self->state = ST_JUMP)		/*Flap*/
-				{
-					self->vy = -4;
-					if(isKeyHeld(SDLK_a) && self->vx > -6)self->vx -= 2;
-					if(isKeyHeld(SDLK_d) && self->vx < 6)self->vx += 2;
-					self->state = ST_FLAP;
-					self->delay = 4;
-				}
-			}
+				break;
 
-			if(isKeyPressed(SDLK_p) && self->uCheck)	/*(Take out / Put away) pump*/
-			{
-				if(self->state != ST_PUMP)
+			case FM_BALLOON1:
+				/*Gravity*/
+				if(self->vy <= gravity && !self->uCheck)
+					self->vy += 0.35;
+
+				/*Walk off ledge*/
+				if(uCheck2 && !self->uCheck)
 				{
-					self->state = ST_PUMP;
-					self->delay = 0;
-					self->vx = 0;
+					self->state = ST_JUMP;
+					self->vx = int(self->vx) - (int(self->vx) % 2);
+				}
+			
+				/*Player Inputs*/
+				if(self->uCheck)
+				{
+					if(((isKeyHeld(SDLK_a) && !self->rCheck) || (isKeyHeld(SDLK_d) && !self->lCheck)) && (self->state != ST_PUMP))
+					{
+						if(isKeyHeld(SDLK_a))							/*Move left*/
+						{
+							if(self->vx > -8)self->vx -= 0.6;
+							if(self->vx < 0)self->isRight = 0;
+						}
+						if(isKeyHeld(SDLK_d))							/*Move right*/
+						{
+							if(self->vx < 8)self->vx += 0.6;
+							if(self->vx > 0)self->isRight = 1;
+						}
+						if(self->uCheck && ((self->state != ST_WALK) && (self->state != ST_RUN)))	/*Initiate walk cycle*/
+						{
+							self->state = ST_WALK;
+							self->frame = 2;
+						}
+						if((abs(self->vx) >= 8) && (self->state == ST_WALK))self->state = ST_RUN;
+					}
+					else		/*Decelerates X Movement When Nothing's Pressed*/
+					{
+						if(abs(self->vx) > 0.6)
+						{
+							if(self->vx >= 0.6)self->vx -= 0.6;
+							if(self->vx <= -0.6)self->vx += 0.6;
+						}
+						else self->vx = 0;
+					}
 				}
 				else
 				{
-					self->state = ST_IDLE;
-					self->ct = 0;
-				}
-			}
-
-			if((self->state == ST_PUMP) && isKeyPressed(SDLK_s))	/*Pump*/
-			{
-				self->frame = 9;
-				self->delay = 3;
-				self->ct++;
-				if(self->ct == 10)
-				{
-					self->form = FM_BALLOON2;
-					self->state = ST_IDLE;
-					self->ct = 0;
-				}
-			}
-
-			if(isKeyPressed(SDLK_o))			/*Detach*/
-			{
-				self->form = FM_NONE;
-				self->owner->owner = NULL;
-				self->owner = NULL;
-			}
-		}
-
-		if(self->form == FM_BALLOON2)
-		{
-			/*Gravity*/
-			if(self->vy <= gravity && !self->uCheck)
-				self->vy += 0.25;
-
-			/*Walk off ledge*/
-			if(uCheck2 && !self->uCheck)
-			{
-				self->state = ST_JUMP;
-				self->vx = int(self->vx) - (int(self->vx) % 2);
-			}
-			
-			/*Player Inputs*/
-			if(self->uCheck)
-			{
-				if((isKeyHeld(SDLK_a) && !self->rCheck) || (isKeyHeld(SDLK_d) && !self->lCheck))
-				{
-					if(isKeyHeld(SDLK_a))							/*Move left*/
+					if(isKeyHeld(SDLK_a) || isKeyHeld(SDLK_d))
 					{
-						if(self->vx > -8)self->vx -= 0.4;
-						if(self->vx < 0)self->isRight = 0;
-					}
-					if(isKeyHeld(SDLK_d))							/*Move right*/
-					{
-						if(self->vx < 8)self->vx += 0.4;
-						if(self->vx > 0)self->isRight = 1;
-					}
-					if(self->uCheck && ((self->state != ST_WALK) && (self->state != ST_RUN)))	/*Initiate walk cycle*/
-					{
-						self->state = ST_WALK;
-						self->frame = 2;
-					}
-					if((abs(self->vx) >= 8) && (self->state == ST_WALK))self->state = ST_RUN;
-				}
-				else		/*Decelerates X Movement When Nothing's Pressed*/
-				{
-					if(abs(self->vx) > 0.5)
-					{
-						if(self->vx >= 0.5)self->vx -= 0.5;
-						if(self->vx <= -0.5)self->vx += 0.5;
-					}
-					else self->vx = 0;
-				}
-			}
-			else
-			{
-				if(isKeyHeld(SDLK_a) || isKeyHeld(SDLK_d))
-				{
-					if(isKeyHeld(SDLK_a))							/*Move left*/
-					{
-						self->isRight = 0;
-					}
-					if(isKeyHeld(SDLK_d))							/*Move right*/
-					{
-						self->isRight = 1;
+						if(isKeyHeld(SDLK_a))							/*Move left*/
+						{
+							self->isRight = 0;
+						}
+						if(isKeyHeld(SDLK_d))							/*Move right*/
+						{
+							self->isRight = 1;
+						}
 					}
 				}
-			}
 
-			if(isKeyPressed(SDLK_SPACE))			
-			{
-				if(self->uCheck)					/*Jump*/
+				if(isKeyPressed(SDLK_SPACE) && (self->state != ST_PUMP))			
 				{
-					self->vy = -7;
-					self->vx = int(self->vx) - (int(self->vx) % 2);
-					self->uCheck = 0;
+					if(self->uCheck)					/*Jump*/
+					{
+						self->vy = -6;
+						self->vx = int(self->vx) - (int(self->vx) % 2);
+						self->uCheck = 0;
+						self->state = ST_JUMP;
+					}
+					else if(self->state = ST_JUMP)		/*Flap*/
+					{
+						self->vy = -4;
+						if(isKeyHeld(SDLK_a) && self->vx > -6)self->vx -= 2;
+						if(isKeyHeld(SDLK_d) && self->vx < 6)self->vx += 2;
+						self->state = ST_FLAP;
+						self->delay = 4;
+					}
+				}
+
+				if(isKeyPressed(SDLK_p) && self->uCheck)	/*(Take out / Put away) pump*/
+				{
+					if(self->state != ST_PUMP)
+					{
+						self->state = ST_PUMP;
+						self->delay = 0;
+						self->vx = 0;
+					}
+					else
+					{
+						self->state = ST_IDLE;
+						self->ct = 0;
+					}
+				}
+
+				if((self->state == ST_PUMP) && isKeyPressed(SDLK_s))	/*Pump*/
+				{
+					self->frame = 9;
+					self->delay = 3;
+					self->ct++;
+					if(self->ct == 10)
+					{
+						self->form = FM_BALLOON2;
+						self->state = ST_IDLE;
+						self->ct = 0;
+					}
+				}
+
+				if(isKeyPressed(SDLK_o))			/*Detach*/
+				{
+					self->form = FM_NONE;
+					self->owner->owner = NULL;
+					self->owner = NULL;
+					self->above = self;
+					self->wait = 20;
+				}
+				break;
+
+			case FM_BALLOON2:
+				/*Gravity*/
+				if(self->vy <= gravity && !self->uCheck)
+					self->vy += 0.25;
+
+				/*Walk off ledge*/
+				if(uCheck2 && !self->uCheck)
+				{
 					self->state = ST_JUMP;
+					self->vx = int(self->vx) - (int(self->vx) % 2);
 				}
-				else if(self->state = ST_JUMP)		/*Flap*/
+			
+				/*Player Inputs*/
+				if(self->uCheck)
 				{
-					self->vy = -5;
-					if(isKeyHeld(SDLK_a) && self->vx > -6)self->vx -= 2;
-					if(isKeyHeld(SDLK_d) && self->vx < 6)self->vx += 2;
-					self->state = ST_FLAP;
-					self->delay = 4;
+					if((isKeyHeld(SDLK_a) && !self->rCheck) || (isKeyHeld(SDLK_d) && !self->lCheck))
+					{
+						if(isKeyHeld(SDLK_a))							/*Move left*/
+						{
+							if(self->vx > -8)self->vx -= 0.4;
+							if(self->vx < 0)self->isRight = 0;
+						}
+						if(isKeyHeld(SDLK_d))							/*Move right*/
+						{
+							if(self->vx < 8)self->vx += 0.4;
+							if(self->vx > 0)self->isRight = 1;
+						}
+						if(self->uCheck && ((self->state != ST_WALK) && (self->state != ST_RUN)))	/*Initiate walk cycle*/
+						{
+							self->state = ST_WALK;
+							self->frame = 2;
+						}
+						if((abs(self->vx) >= 8) && (self->state == ST_WALK))self->state = ST_RUN;
+					}
+					else		/*Decelerates X Movement When Nothing's Pressed*/
+					{
+						if(abs(self->vx) > 0.5)
+						{
+							if(self->vx >= 0.5)self->vx -= 0.5;
+							if(self->vx <= -0.5)self->vx += 0.5;
+						}
+						else self->vx = 0;
+					}
 				}
-			}
+				else
+				{
+					if(isKeyHeld(SDLK_a) || isKeyHeld(SDLK_d))
+					{
+						if(isKeyHeld(SDLK_a))							/*Move left*/
+						{
+							self->isRight = 0;
+						}
+						if(isKeyHeld(SDLK_d))							/*Move right*/
+						{
+							self->isRight = 1;
+						}
+					}
+				}
 
-			if(isKeyPressed(SDLK_o))			/*Detach*/
-			{
-				self->form = FM_NONE;
-				self->owner->owner = NULL;
-				self->owner = NULL;
-			}
+				if(isKeyPressed(SDLK_SPACE))			
+				{
+					if(self->uCheck)					/*Jump*/
+					{
+						self->vy = -7;
+						self->vx = int(self->vx) - (int(self->vx) % 2);
+						self->uCheck = 0;
+						self->state = ST_JUMP;
+					}
+					else if(self->state = ST_JUMP)		/*Flap*/
+					{
+						self->vy = -5;
+						if(isKeyHeld(SDLK_a) && self->vx > -6)self->vx -= 2;
+						if(isKeyHeld(SDLK_d) && self->vx < 6)self->vx += 2;
+						self->state = ST_FLAP;
+						self->delay = 4;
+					}
+				}
+
+				if(isKeyPressed(SDLK_o))			/*Detach*/
+				{
+					self->form = FM_NONE;
+					self->owner->owner = NULL;
+					self->owner = NULL;
+					self->above = self;
+					self->wait = 20;
+				}
+				break;
 		}
 	}
 

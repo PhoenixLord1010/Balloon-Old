@@ -29,9 +29,12 @@ typedef struct ENTITY_T
 	SDL_Rect bbox;				/*Bounding box for collisions*/
 	
 	int uCheck, dCheck, lCheck, rCheck;		/*Collision checks*/
+	struct ENTITY_T *below;
+	struct ENTITY_T *above;
 	int isRight;				/*Which way is this facing*/
 	int delay;					/*Animation delay*/
 	int ct;						/*Counter*/
+	int wait;
 	int tang;					/*Is this tangible*/
 	
 	int health;					/*Current health*/
