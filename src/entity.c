@@ -129,7 +129,7 @@ int Collide(SDL_Rect box1, SDL_Rect box2)
 	return 0;
 }
 
-void CheckCollisions(Entity *self, SDL_Rect box1, SDL_Rect *collision)
+void CheckCollisions(Entity *self, SDL_Rect box1, SDL_Rect *collision, int ct)
 {
 	int i = 0;
 	SDL_Rect box2;
@@ -138,6 +138,7 @@ void CheckCollisions(Entity *self, SDL_Rect box1, SDL_Rect *collision)
 	self->dCheck = 0;
 	self->lCheck = 0;
 	self->rCheck = 0;
+	self->above = self;
 
 	for(i = 0; i < MAXENTITIES; i++)
 	{
@@ -150,23 +151,26 @@ void CheckCollisions(Entity *self, SDL_Rect box1, SDL_Rect *collision)
 		{
 			if(EntityList[i].tang)		/*Collision with tangible object*/
 			{
-				if((abs((box1.y + box1.h) - box2.y) <= 10) && (abs((box1.y + box1.h) - box2.y) <= abs((box1.x + box1.w) - box2.x)) && (abs((box1.y + box1.h) - box2.y) <= abs((box2.x + box2.w) - box1.x)) && (abs((box1.y + box1.h) - box2.y) <= abs((box2.y + box2.h) - box1.y)) && (self->vy >= EntityList[i].vy) && EntityList[i].uCheck)
+				if((abs((box1.y + box1.h) - box2.y) <= 16) && (abs((box1.y + box1.h) - box2.y) <= abs((box1.x + box1.w) - box2.x)) && (abs((box1.y + box1.h) - box2.y) <= abs((box2.x + box2.w) - box1.x)) && (abs((box1.y + box1.h) - box2.y) <= abs((box2.y + box2.h) - box1.y)) && (self->vy >= EntityList[i].vy) && EntityList[i].uCheck)
 				{
 					self->uCheck = 1;
 					self->below = &EntityList[i];
 					collision->y = box2.y;
+					ct = 11;
 				}
-				else if((abs((box1.x + box1.w) - box2.x) <= 10) && (abs((box1.x + box1.w) - box2.x) <= abs((box2.x + box2.w) - box1.x)) && (abs((box1.x + box1.w) - box2.x) <= abs((box2.y + box2.h) - box1.y)) && (self->vx >= EntityList[i].vx) && EntityList[i].lCheck)
+				else if((abs((box1.x + box1.w) - box2.x) <= 16) && (abs((box1.x + box1.w) - box2.x) <= abs((box2.x + box2.w) - box1.x)) && (abs((box1.x + box1.w) - box2.x) <= abs((box2.y + box2.h) - box1.y)) && (self->vx >= EntityList[i].vx) && EntityList[i].lCheck)
 					 {	 
 						 self->lCheck = 1;
 						 collision->x = box2.x;
+						 ct = 11;
 					 }
-					 else if((abs((box2.x + box2.w) - box1.x) <= 10) && (abs((box2.x + box2.w) - box1.x) <= abs((box2.y + box2.h) - box1.y)) && (self->vx <= EntityList[i].vx) && EntityList[i].rCheck)
+					 else if((abs((box2.x + box2.w) - box1.x) <= 16) && (abs((box2.x + box2.w) - box1.x) <= abs((box2.y + box2.h) - box1.y)) && (self->vx <= EntityList[i].vx) && EntityList[i].rCheck)
 						  {	  
 							  self->rCheck = 1;
 							  collision->w = box2.x + box2.w;
+							  ct = 11;
 						  }
-						  else if((abs((box2.y + box2.h) - box1.y) <= 10) && (self->vy <= EntityList[i].vy))
+						  else if((abs((box2.y + box2.h) - box1.y) <= 16) && (self->vy <= EntityList[i].vy))
 							   {
 								   self->above = &EntityList[i];
 								   if(EntityList[i].dCheck)
@@ -174,6 +178,7 @@ void CheckCollisions(Entity *self, SDL_Rect box1, SDL_Rect *collision)
 									   self->dCheck = 1;
 									   collision->h = box2.y + box2.h;
 								   }
+								   ct = 11;
 							   }
 			}
 		}
@@ -205,7 +210,6 @@ Entity *MakePlayer(int x, int y)
 	player->delay = 0;
 	player->tang = 0;
 	player->health = 1;
-	Player = player;
 	return player;
 }
 
@@ -213,15 +217,25 @@ void PlayerThink(Entity *self)
 {
 	int i = 0;
 	int uCheck2 = self->uCheck;
-	SDL_Rect b1, collision;
-
+	SDL_Rect b1, collision, collision2;
+	
 	do
 	{
 		b1.x = self->sx + self->bbox.x + (self->vx * (i / 10));
 		b1.y = self->sy + self->bbox.y + (self->vy * (i / 10));
 		b1.w = self->bbox.w;
 		b1.h = self->bbox.h;
-		CheckCollisions(self, b1, &collision);
+		CheckCollisions(self, b1, &collision, i);
+		
+		if(self->owner != NULL)
+		{
+			b1.x = self->owner->sx + self->owner->bbox.x + (self->vx * (i / 10));
+			b1.y = self->owner->sy + self->owner->bbox.y + (self->vy * (i / 10));
+			b1.w = self->owner->bbox.w;
+			b1.h = self->owner->bbox.h;
+			CheckCollisions(self->owner, b1, &collision2, i);
+		}
+		
 		i++;
 	}
 	while(i <= 10);
@@ -232,42 +246,24 @@ void PlayerThink(Entity *self)
 	/*Do While Alive*/
 	if(self->health > 0)
 	{
-		/*What to Do if Colliding*/
-		if(self->uCheck)
-		{
-			self->vy = 0;
-			self->sy = collision.y - self->bbox.h;
-		}
-		if(self->dCheck)
-		{
-			self->vy = 1;
-			self->sy = collision.h;
-		}
-		if(self->lCheck)
-		{
-			self->vx = 0;
-			self->sx = collision.x - (self->bbox.x + self->bbox.w);
-		}
-		if(self->rCheck)
-		{
-			self->vx = 0;
-			self->sx = collision.w - self->bbox.x + 0.6;
-		}
-
 		/*Keep player on screen*/
 		if(self->sx + self->bbox.x <= xOffset)self->sx = xOffset - self->bbox.x;
 		if(self->sx + self->bbox.x + self->bbox.w > screen->w + xOffset)self->sx = (screen->w + xOffset) - (self->bbox.x + self->bbox.w);
 		if(self->sy <= 0)self->vy = 1;
 
 		/*Movement*/
-		self->sx += self->vx;
-		self->sy += self->vy;
+		self->sx += (self->vx + self->below->vx);
+		self->sy += (self->vy + self->below->vy/2);
 
 		/*Standing Still*/
 		if((self->vx == 0) && self->uCheck && self->state != ST_PUMP)
 			self->state = ST_IDLE;
 
-		if(self->wait > 0)self->wait--;
+		if(self->wait > 0)
+		{
+			self->wait--;
+			self->above = self;
+		}
 
 		switch(self->form)
 		{
@@ -276,6 +272,28 @@ void PlayerThink(Entity *self)
 				if(self->vy <= gravity && !self->uCheck)
 					self->vy += 2;
 
+				/*What to Do if Colliding*/
+				if(self->uCheck)
+				{
+					self->vy = 0;
+					self->sy = collision.y - self->bbox.h;
+				}
+				if(self->dCheck)
+				{
+					self->vy = 1;
+					self->sy = collision.h;
+				}
+				if(self->lCheck)
+				{
+					self->vx = 0;
+					self->sx = collision.x - (self->bbox.x + self->bbox.w);
+				}
+				if(self->rCheck)
+				{
+					self->vx = 0;
+					self->sx = collision.w - self->bbox.x + 0.6;
+				}
+				
 				/*Walk off ledge*/
 				if(uCheck2 && !self->uCheck)self->state = ST_JUMP;
 			
@@ -368,6 +386,32 @@ void PlayerThink(Entity *self)
 				if(self->vy <= gravity && !self->uCheck)
 					self->vy += 0.35;
 
+				/*What to Do if Colliding*/
+				if(self->uCheck)
+				{
+					self->vy = 0;
+					self->sy = collision.y - self->bbox.h;
+				}
+				if(self->dCheck)
+				{
+					self->vy = 1;
+					self->sy = collision.h;
+				}
+				if(self->lCheck || self->owner->lCheck)
+				{
+					if(!self->uCheck && self->vx > 0)self->vx = -abs(self->vx) + 2;
+					else self->vx = 0;
+					if(self->lCheck)self->sx = collision.x - (self->bbox.x + self->bbox.w);
+					if(self->owner->lCheck)self->sx = collision2.x - (self->owner->bbox.x + self->owner->bbox.w);
+				}
+				if(self->rCheck || self->owner->rCheck)
+				{
+					if(!self->uCheck && self->vx < 0)self->vx = abs(self->vx) - 2;
+					else self->vx = 0;
+					if(self->rCheck)self->sx = collision.w - self->bbox.x + 0.6;
+					if(self->owner->rCheck)self->sx = collision2.w - self->owner->bbox.x + 0.6;
+				}
+				
 				/*Walk off ledge*/
 				if(uCheck2 && !self->uCheck)
 				{
@@ -484,6 +528,30 @@ void PlayerThink(Entity *self)
 				if(self->vy <= gravity && !self->uCheck)
 					self->vy += 0.25;
 
+				/*What to Do if Colliding*/
+				if(self->uCheck)
+				{
+					self->vy = 0;
+					self->sy = collision.y - self->bbox.h;
+				}
+				if(self->dCheck)
+				{
+					self->vy = 1;
+					self->sy = collision.h;
+				}
+				if(self->lCheck)
+				{
+					if(!self->uCheck && self->vx > 0)self->vx = -abs(self->vx) + 2;
+					else self->vx = 0;
+					self->sx = collision.x - (self->bbox.x + self->bbox.w);
+				}
+				if(self->rCheck)
+				{
+					if(!self->uCheck && self->vx < 0)self->vx = abs(self->vx) - 2;
+					else self->vx = 0;
+					self->sx = collision.w - self->bbox.x + 0.6;
+				}
+				
 				/*Walk off ledge*/
 				if(uCheck2 && !self->uCheck)
 				{
@@ -634,6 +702,11 @@ void PlayerThink(Entity *self)
 			break;
 	}
 
+	if(self->sy > 800)
+	{
+		FreeEntity(self);
+		Player = NULL;
+	}
 
 	if(!self->isRight && self->state != ST_DYING)self->frame += 10;
 }
@@ -754,14 +827,14 @@ Entity *BuildBrick(int x, int y)
 	Entity *brick;
 	brick = NewEntity();
 	if(brick == NULL)return brick;
-	brick->sprite = LoadSprite("images/brick.png", 32, 32);
+	brick->sprite = LoadSprite("images/brick.png", 64, 32);
 	brick->think = ObjectThink;
 	brick->shown = 1;
 	brick->sx = x;
 	brick->sy = y;
 	brick->bbox.x = 0;
 	brick->bbox.y = 0;
-	brick->bbox.w = 32;
+	brick->bbox.w = 64;
 	brick->bbox.h = 32;
 	brick->tang = 1;
 	brick->uCheck = 1;
@@ -802,7 +875,7 @@ void BuildRoad(int x, int y, int j)
 {
 	for(int i = 0; i < j; i++)
 	{
-		BuildBrick(x + (32 * i), y);
+		BuildBrick(x + (64 * i), y);
 	}
 }
 

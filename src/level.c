@@ -5,6 +5,7 @@
 extern SDL_Surface *screen;
 extern float xOffset;
 extern float yOffset;
+extern Entity *Player;
 
 int CurrentLevel = 0;
 int CurrentSection = 0;
@@ -16,8 +17,9 @@ void RenderLevel(int level)
 	{
 		if(CurrentSection == 0)
 		{	
-			BuildRoad(0, 600, 30);
+			BuildRoad(0, 600, 10);
 			BuildColumn(300, 600-64);
+			BuildColumn(400, 600-128);
 
 			CurrentSection++;
 		}
@@ -26,10 +28,9 @@ void RenderLevel(int level)
 
 void UpdateLevel()
 {
-	if(player == NULL)
+	if(Player == NULL)
 	{
-		player = MakePlayer(0, 500);
-		//MakeBalloon();
+		Player = MakePlayer(0, 500);
 	}
 
 	RenderLevel(CurrentLevel);
