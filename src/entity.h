@@ -29,13 +29,16 @@ typedef struct ENTITY_T
 	SDL_Rect bbox;				/*Bounding box for collisions*/
 	
 	int uCheck, dCheck, lCheck, rCheck;		/*Collision checks*/
-	struct ENTITY_T *below;
-	struct ENTITY_T *above;
+	struct ENTITY_T *below;		/*The entity below this one*/
+	struct ENTITY_T *above;		/*The entity above this one*/
+	struct ENTITY_T *left;
+	struct ENTITY_T *right;
 	int isRight;				/*Which way is this facing*/
 	int delay;					/*Animation delay*/
 	int ct;						/*Counter*/
 	int wait;
 	int tang;					/*Is this tangible*/
+	int uTang, dTang, lTang, rTang;		/*Which directions are tangible*/
 	
 	int health;					/*Current health*/
 }Entity;
@@ -59,6 +62,8 @@ Entity *BuildBrick(int x, int y);
 Entity *BuildColumn(int x, int y);
 void ObjectThink(Entity *self);
 void BuildRoad(int x, int y, int i);
+Entity *BuildBoundary(int x, int y);
+void BoundaryThink(Entity *self);
 
 /*Keyboard Input Stuff*/
 void InitKeyboard();

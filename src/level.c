@@ -17,7 +17,10 @@ void RenderLevel(int level)
 	{
 		if(CurrentSection == 0)
 		{	
-			BuildRoad(0, 600, 10);
+			BuildBoundary(-64, 0);
+			BuildBoundary(960, 0);
+			
+			BuildRoad(0, 600, 12);
 			BuildColumn(300, 600-64);
 			BuildColumn(400, 600-128);
 
