@@ -129,7 +129,7 @@ int Collide(SDL_Rect box1, SDL_Rect box2)
 	return 0;
 }
 
-void CheckCollisions(Entity *self, SDL_Rect box1, SDL_Rect *collision, int ct)
+void CheckCollisions(Entity *self, SDL_Rect box1, SDL_Rect *collision)
 {
 	int i = 0;
 	SDL_Rect box2;
@@ -150,30 +150,27 @@ void CheckCollisions(Entity *self, SDL_Rect box1, SDL_Rect *collision, int ct)
 		box2.w = EntityList[i].bbox.w;
 		box2.h = EntityList[i].bbox.h;
 
-		if(Collide(box1,box2))
+		if(Collide(box1,box2) && self->sprite != EntityList[i].sprite)
 		{
 			if(EntityList[i].tang)		/*Collision with tangible object*/
 			{
-				if((abs((box1.y + box1.h) - box2.y) <= 16) && (abs((box1.y + box1.h) - box2.y) <= abs((box1.x + box1.w) - box2.x)) && (abs((box1.y + box1.h) - box2.y) <= abs((box2.x + box2.w) - box1.x)) && (abs((box1.y + box1.h) - box2.y) <= abs((box2.y + box2.h) - box1.y)) && (self->vy >= EntityList[i].vy) && EntityList[i].uTang)
+				if((abs((box1.y + box1.h) - box2.y) <= 16) && (abs((box1.y + box1.h) - box2.y) <= abs((box1.x + box1.w) - box2.x)) && (abs((box1.y + box1.h) - box2.y) <= abs((box2.x + box2.w) - box1.x)) && (abs((box1.y + box1.h) - box2.y) <= abs((box2.y + box2.h) - box1.y)) && (self->vy + 2 >= EntityList[i].vy) && EntityList[i].uTang)
 				{
 					self->uCheck = 1;
 					self->below = &EntityList[i];
 					collision->y = box2.y;
-					ct = 11;
 				}
 				else if((abs((box1.x + box1.w) - box2.x) <= 16) && (abs((box1.x + box1.w) - box2.x) <= abs((box2.x + box2.w) - box1.x)) && (abs((box1.x + box1.w) - box2.x) <= abs((box2.y + box2.h) - box1.y)) && (self->vx >= EntityList[i].vx) && EntityList[i].lTang)
 					 {	 
 						 self->lCheck = 1;
 						 self->left = &EntityList[i];
 						 collision->x = box2.x;
-						 ct = 11;
 					 }
 					 else if((abs((box2.x + box2.w) - box1.x) <= 16) && (abs((box2.x + box2.w) - box1.x) <= abs((box2.y + box2.h) - box1.y)) && (self->vx <= EntityList[i].vx) && EntityList[i].rTang)
 						  {	  
 							  self->rCheck = 1;
 							  self->right = &EntityList[i];
 							  collision->w = box2.x + box2.w;
-							  ct = 11;
 						  }
 						  else if((abs((box2.y + box2.h) - box1.y) <= 16) && (self->vy <= EntityList[i].vy))
 							   {
@@ -183,7 +180,6 @@ void CheckCollisions(Entity *self, SDL_Rect box1, SDL_Rect *collision, int ct)
 									   self->dCheck = 1;
 									   collision->h = box2.y + box2.h;
 								   }
-								   ct = 11;
 							   }
 			}
 		}
@@ -249,6 +245,7 @@ void PlayerThink(Entity *self)
 			flap = -5;
 			break;
 		case FM_NONE:
+		default:
 			grav = 2;
 			speed = 8;
 			accel = 0.8;
@@ -260,10 +257,11 @@ void PlayerThink(Entity *self)
 	do
 	{
 		b1.x = self->sx + self->bbox.x + (self->vx * (i / 10));
-		b1.y = self->sy + self->bbox.y + (self->vy * (i / 10));
+		if(!self->uCheck && self->vy >= 0)b1.y = self->sy + self->bbox.y + ((self->vy + grav) * (i / 10));
+		else b1.y = self->sy + self->bbox.y + (self->vy * (i / 10));
 		b1.w = self->bbox.w;
 		b1.h = self->bbox.h;
-		CheckCollisions(self, b1, &collision, i);
+		CheckCollisions(self, b1, &collision);
 		
 		if(self->owner != NULL)
 		{
@@ -271,7 +269,7 @@ void PlayerThink(Entity *self)
 			b1.y = self->owner->sy + self->owner->bbox.y + (self->vy * (i / 10));
 			b1.w = self->owner->bbox.w;
 			b1.h = self->owner->bbox.h;
-			CheckCollisions(self->owner, b1, &collision2, i);
+			CheckCollisions(self->owner, b1, &collision2);
 		}
 		
 		i++;
@@ -287,20 +285,14 @@ void PlayerThink(Entity *self)
 		/*Movement*/
 		self->sx += self->vx;
 		self->sy += self->vy;
-		if(self->below != NULL)
-		{
-			self->sx += self->below->vx;
-			self->sy += self->below->vy/2;
-		}
-
+		
 		/*Standing Still*/
-		if((self->vx == 0) && self->uCheck && self->state != ST_PUMP)
+		if((self->vx == 0) && self->uCheck && uCheck2 && self->state != ST_PUMP)
 			self->state = ST_IDLE;
 
 		if(self->wait > 0)
 		{
 			self->wait--;
-			self->above = self;
 		}
 			
 		/*Gravity*/
@@ -315,7 +307,7 @@ void PlayerThink(Entity *self)
 		}
 		if(self->dCheck)
 		{
-			self->vy = 1;
+			self->vy = 1 + self->above->vy;
 			self->sy = collision.h;
 		}
 		if(self->lCheck)
@@ -334,7 +326,7 @@ void PlayerThink(Entity *self)
 		{
 			if(self->owner->dCheck)
 			{
-				self->vy = 1;
+				self->vy = 1 + self->owner->above->vy;
 				self->sy = collision2.h + (self->owner->sprite->h - (self->owner->bbox.y + 12));
 			}
 			if(self->owner->lCheck)
@@ -442,12 +434,12 @@ void PlayerThink(Entity *self)
 			}
 		}
 
-		if((self->state == ST_PUMP) && isKeyPressed(SDLK_s))	/*Pump*/
+		if((self->state == ST_PUMP) && isKeyPressed(SDLK_s) && !self->delay)	/*Pump*/
 		{
 			self->frame = 9;
-			self->delay = 3;
+			self->delay = 4;
 			self->ct++;
-			if(self->ct == 10)
+			if(self->ct == 6)
 			{
 				if(self->form == FM_NONE)
 				{
@@ -610,7 +602,7 @@ void BalloonThink(Entity *self)
 			b1.y = self->sy + self->bbox.y + (self->vy * (i / 10));
 			b1.w = self->bbox.w;
 			b1.h = self->bbox.h;
-			CheckCollisions(self, b1, &collision, i);
+			CheckCollisions(self, b1, &collision);
 			i++;
 		}
 		while(i <= 10);
@@ -641,7 +633,6 @@ void BalloonThink(Entity *self)
 	switch(self->state)
 	{
 		case ST_PUMP:
-			self->frame = 0;
 		case ST_IDLE:
 			if(self->form == FM_BALLOON1)	/*Position*/
 			{
@@ -872,6 +863,103 @@ void BuildRoad(int x, int y, int j)
 	for(int i = 0; i < j; i++)
 	{
 		BuildBrick(x + (64 * i), y);
+	}
+}
+
+Entity *BuildMovingPlatform(int x, int y, int a, int b)
+{
+	Entity *plat;
+	plat = NewEntity();
+	if(plat == NULL)return plat;
+	plat->sprite = LoadSprite("images/movingplatform.png", 64, 16);
+	plat->think = PlatThink;
+	plat->shown = 1;
+	plat->sx = x;
+	plat->sy = y;
+	plat->bbox.x = 0;
+	plat->bbox.y = 0;
+	plat->bbox.w = 64;
+	plat->bbox.h = 16;
+	plat->tang = 1;
+	plat->uTang = 1;
+	plat->dTang = 0;
+	plat->lTang = 1;
+	plat->rTang = 1;
+	plat->health = x;			/*Point 1's x position*/
+	plat->delay = y;			/*Point 1's y position*/
+	plat->ct = a;			/*Point 2's x position*/
+	plat->wait = b;			/*Point 2's y position*/
+	plat->isRight = 1;
+	return plat;
+}
+
+void PlatThink(Entity *self)
+{
+	int i = 0;
+	SDL_Rect b1, collision;
+	float px, py, pz, hyp;
+	float speed = 2;
+	
+	if(self->vy > 0)
+	{
+		self->sy += 2;
+		self->bbox.y -= 2;
+	}
+	
+	do
+	{
+		b1.x = self->sx + self->bbox.x + (self->vx * (i / 10));
+		b1.y = self->sy + self->bbox.y + (self->vy * (i / 10));
+		b1.w = self->bbox.w;
+		b1.h = self->bbox.h;
+		CheckCollisions(self, b1, &collision);
+		i++;
+	}
+	while(i <= 10);
+	
+	if(self->isRight)
+	{
+		px = self->ct - self->sx;
+		py = self->wait - self->sy;
+	}
+	else
+	{
+		px = self->health - self->sx;
+		py = self->delay - self->sy;
+	}
+
+	pz = sqrt((px * px) + (py * py));
+	if(pz != 0)hyp = speed / pz;
+	else hyp = 0;
+	self->vx = px * hyp;
+	self->vy = py * hyp;
+	if(pz < 5)
+		if(self->isRight)
+			self->isRight = 0;
+		else
+			self->isRight = 1;
+
+	self->sx += self->vx;
+	self->sy += self->vy;
+	
+	if(self->above != NULL)
+	{
+		self->above->sx += self->vx;
+		self->above->sy += self->vy;
+	}
+	if(self->left != NULL)
+	{
+		self->left->sx += self->vx;
+	}
+	if(self->right != NULL)
+	{
+		self->right->sx += self->vx;
+	}
+
+	if(self->vy > 0)
+	{
+		self->sy -= 2;
+		self->bbox.y += 2;
 	}
 }
 

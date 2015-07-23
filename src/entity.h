@@ -62,6 +62,8 @@ Entity *BuildBrick(int x, int y);
 Entity *BuildColumn(int x, int y);
 void ObjectThink(Entity *self);
 void BuildRoad(int x, int y, int i);
+Entity *BuildMovingPlatform(int x, int y, int a, int b);	/*Moving platforms*/
+void PlatThink(Entity *self);
 Entity *BuildBoundary(int x, int y);
 void BoundaryThink(Entity *self);
 
