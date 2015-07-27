@@ -154,25 +154,25 @@ void CheckCollisions(Entity *self, SDL_Rect box1, SDL_Rect *collision)
 		{
 			if(EntityList[i].tang)		/*Collision with tangible object*/
 			{
-				if((abs((box1.y + box1.h) - box2.y) <= 16) && (abs((box1.y + box1.h) - box2.y) <= abs((box1.x + box1.w) - box2.x)) && (abs((box1.y + box1.h) - box2.y) <= abs((box2.x + box2.w) - box1.x)) && (abs((box1.y + box1.h) - box2.y) <= abs((box2.y + box2.h) - box1.y)) && (self->vy + 2 >= EntityList[i].vy) && EntityList[i].uTang)
+				if((abs((box1.y + box1.h) - box2.y) <= 12) && (abs((box1.y + box1.h) - box2.y) <= abs((box1.x + box1.w) - box2.x)) && (abs((box1.y + box1.h) - box2.y) <= abs((box2.x + box2.w) - box1.x)) && (abs((box1.y + box1.h) - box2.y) <= abs((box2.y + box2.h) - box1.y)) && (self->vy + 2 >= EntityList[i].vy) && EntityList[i].uTang)
 				{
 					self->uCheck = 1;
 					self->below = &EntityList[i];
 					collision->y = box2.y;
 				}
-				else if((abs((box1.x + box1.w) - box2.x) <= 16) && (abs((box1.x + box1.w) - box2.x) <= abs((box2.x + box2.w) - box1.x)) && (abs((box1.x + box1.w) - box2.x) <= abs((box2.y + box2.h) - box1.y)) && (self->vx >= EntityList[i].vx) && EntityList[i].lTang)
+				else if((abs((box1.x + box1.w) - box2.x) <= 12) && (abs((box1.x + box1.w) - box2.x) <= abs((box2.x + box2.w) - box1.x)) && (abs((box1.x + box1.w) - box2.x) <= abs((box2.y + box2.h) - box1.y)) && (self->vx >= EntityList[i].vx) && EntityList[i].lTang)
 					 {	 
 						 self->lCheck = 1;
-						 self->left = &EntityList[i];
+						 self->right = &EntityList[i];
 						 collision->x = box2.x;
 					 }
-					 else if((abs((box2.x + box2.w) - box1.x) <= 16) && (abs((box2.x + box2.w) - box1.x) <= abs((box2.y + box2.h) - box1.y)) && (self->vx <= EntityList[i].vx) && EntityList[i].rTang)
+					 else if((abs((box2.x + box2.w) - box1.x) <= 12) && (abs((box2.x + box2.w) - box1.x) <= abs((box2.y + box2.h) - box1.y)) && (self->vx <= EntityList[i].vx) && EntityList[i].rTang)
 						  {	  
 							  self->rCheck = 1;
-							  self->right = &EntityList[i];
+							  self->left = &EntityList[i];
 							  collision->w = box2.x + box2.w;
 						  }
-						  else if((abs((box2.y + box2.h) - box1.y) <= 16) && (self->vy <= EntityList[i].vy))
+						  else if((abs((box2.y + box2.h) - box1.y) <= 12) && (self->vy <= EntityList[i].vy))
 							   {
 								   self->above = &EntityList[i];
 								   if(EntityList[i].dTang)
@@ -285,6 +285,19 @@ void PlayerThink(Entity *self)
 		/*Movement*/
 		self->sx += self->vx;
 		self->sy += self->vy;
+		if(self->below != NULL)
+		{
+			self->sx += self->below->vx;
+			self->sy += self->below->vy;
+		}
+		if(self->left != NULL)
+		{
+			self->sx += self->left->vx;
+		}
+		if(self->right != NULL)
+		{
+			self->sx += self->right->vx;
+		}
 		
 		/*Standing Still*/
 		if((self->vx == 0) && self->uCheck && uCheck2 && self->state != ST_PUMP)
@@ -322,7 +335,7 @@ void PlayerThink(Entity *self)
 			else self->vx = 0;
 			self->sx = collision.w - self->bbox.x + 0.6;
 		}
-		if(self->form == FM_BALLOON1 || self->form == FM_BALLOON2)
+		if(self->form == FM_BALLOON1 || self->form == FM_BALLOON2)		/*Balloon Collisions*/
 		{
 			if(self->owner->dCheck)
 			{
@@ -331,15 +344,44 @@ void PlayerThink(Entity *self)
 			}
 			if(self->owner->lCheck)
 			{
-				if(!self->uCheck && self->vx > 0)self->vx = -abs(self->vx) + 2;
-				//else self->vx = 0;
-				self->sx = collision2.x - (self->owner->bbox.x + self->owner->bbox.w - 12);
+				if(!self->uCheck && (self->vx - self->owner->right->vx > 0))
+				{
+					self->vx = -abs(int(self->vx - self->owner->right->vx) - (int(self->vx - self->owner->right->vx) % 2)) + 2;
+					self->sx = collision2.x - (self->owner->bbox.x + self->owner->bbox.w - 12);
+				}
+				else
+				{
+					if(self->uCheck && (self->vx + self->owner->right->vx != 0))
+					{
+						self->form = FM_NONE;
+						self->owner->owner = NULL;
+						self->owner = NULL;
+						self->above = self;
+						self->wait = 20;
+					}
+				}
 			}
-			if(self->owner->rCheck)
+			if(self->owner != NULL)
 			{
-				if(!self->uCheck && self->vx < 0)self->vx = abs(self->vx) - 2;
-				//else self->vx = 0;
-				self->sx = collision2.w - self->owner->bbox.x + 12.6;
+				if(self->owner->rCheck)
+				{
+					if(!self->uCheck && (self->vx - self->owner->left->vx < 0))
+					{
+						self->vx = abs(int(self->vx - self->owner->left->vx) - (int(self->vx - self->owner->left->vx) % 2)) - 2;
+						self->sx = collision2.w - self->owner->bbox.x + 12.6;
+					}
+					else
+					{
+						if(self->uCheck && (self->vx + self->owner->left->vx != 0))
+						{
+							self->form = FM_NONE;
+							self->owner->owner = NULL;
+							self->owner = NULL;
+							self->above = self;
+							self->wait = 20;
+						}
+					}
+				}
 			}
 		}
 				
@@ -610,10 +652,12 @@ void BalloonThink(Entity *self)
 		if(self->lCheck)
 		{
 			self->vx = -abs(self->vx);
+			self->vx += self->right->vx;
 		}
 		if(self->rCheck)
 		{
 			self->vx = abs(self->vx);
+			self->vx += self->left->vx;
 		}
 		
 		self->state = ST_JUMP;
@@ -905,6 +949,11 @@ void PlatThink(Entity *self)
 		self->sy += 2;
 		self->bbox.y -= 2;
 	}
+	else
+	{
+		//self->sy -= 2;
+		//self->bbox.y += 2;
+	}
 	
 	do
 	{
@@ -941,25 +990,16 @@ void PlatThink(Entity *self)
 
 	self->sx += self->vx;
 	self->sy += self->vy;
-	
-	if(self->above != NULL)
-	{
-		self->above->sx += self->vx;
-		self->above->sy += self->vy;
-	}
-	if(self->left != NULL)
-	{
-		self->left->sx += self->vx;
-	}
-	if(self->right != NULL)
-	{
-		self->right->sx += self->vx;
-	}
 
 	if(self->vy > 0)
 	{
 		self->sy -= 2;
 		self->bbox.y += 2;
+	}
+	else
+	{
+		//self->sy += 2;
+		//self->bbox.y -= 2;
 	}
 }
 

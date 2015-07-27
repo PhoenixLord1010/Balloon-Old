@@ -21,10 +21,11 @@ void RenderLevel(int level)
 			BuildBoundary(960, 0);
 			
 			BuildRoad(0, 600, 12);
-			//BuildColumn(300, 600-64);
+			BuildColumn(200, 600-64);
 			//BuildColumn(450, 600-128);
-			BuildMovingPlatform(300, 350, 300, 550);
-			BuildMovingPlatform(500, 530, 700, 530);
+			BuildMovingPlatform(300, 330, 300, 530);
+			BuildMovingPlatform(700, 430, 500, 430);
+			BuildMovingPlatform(400, 530, 541, 388);
 
 			CurrentSection++;
 		}
