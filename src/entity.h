@@ -11,7 +11,7 @@ Functions and stuff for handling entities
 #define MAXSTATES		20
 
 enum STATES {ST_IDLE, ST_WALK, ST_RUN, ST_SKID, ST_JUMP, ST_FLAP, ST_PUMP, ST_DYING};
-enum FORMS {FM_NONE, FM_BALLOON1, FM_BALLOON2};
+enum FORMS {FM_NONE, FM_BALLOON1, FM_BALLOON2, FM_CHUTE};
 
 typedef struct ENTITY_T
 {
@@ -20,7 +20,7 @@ typedef struct ENTITY_T
 	void (*think) (struct ENTITY_T *self);	/*Called by engine to handle inputs*/
 	int used;					/*Is this entity free*/
 	int shown;					/*Should this be rendered*/
-	int layer;					/*What layer is this on*/
+	int layer;					/*What layer is this on [0<->9 == back<->front]*/
 	int frame;					/*Current frame to render*/
 	int state;					/*What state is this in*/
 	int form;					/*What form is the player in*/
@@ -31,14 +31,15 @@ typedef struct ENTITY_T
 	int uCheck, dCheck, lCheck, rCheck;		/*Collision checks*/
 	struct ENTITY_T *below;		/*The entity below this one*/
 	struct ENTITY_T *above;		/*The entity above this one*/
-	struct ENTITY_T *left;
-	struct ENTITY_T *right;
+	struct ENTITY_T *right;		/*The entity to the right*/
+	struct ENTITY_T *left;		/*The entity to the left*/
 	int isRight;				/*Which way is this facing*/
 	int delay;					/*Animation delay*/
 	int ct;						/*Counter*/
 	int wait;
 	int tang;					/*Is this tangible*/
 	int uTang, dTang, lTang, rTang;		/*Which directions are tangible*/
+	int movable;				/*Is this movable*/
 	
 	int health;					/*Current health*/
 }Entity;
@@ -58,6 +59,8 @@ Entity *MakePlayer(int x, int y);
 void PlayerThink(Entity *self);
 Entity *MakeBalloon();
 void BalloonThink(Entity *self);
+Entity *MakeChute();
+void ChuteThink(Entity *self);
 Entity *BuildBrick(int x, int y);
 Entity *BuildColumn(int x, int y);
 void ObjectThink(Entity *self);

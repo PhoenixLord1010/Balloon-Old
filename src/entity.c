@@ -214,6 +214,7 @@ Entity *MakePlayer(int x, int y)
 	player->dTang = 1;
 	player->lTang = 1;
 	player->rTang = 1;
+	player->movable = 1;
 	player->health = 1;
 	return player;
 }
@@ -243,6 +244,14 @@ void PlayerThink(Entity *self)
 			decel = 0.5;
 			jump = -7;
 			flap = -5;
+			break;
+		case FM_CHUTE:
+			grav = 0.1;
+			speed = 5;
+			accel = 0.2;
+			decel = 0.2;
+			jump = 0.5;
+			flap = 0;
 			break;
 		case FM_NONE:
 		default:
@@ -312,6 +321,15 @@ void PlayerThink(Entity *self)
 		if(self->vy <= gravity && !self->uCheck)
 			self->vy += grav;
 
+		/*Chute*/
+		if(self->form == FM_CHUTE && self->vy > jump)
+		{
+			if(self->vy / 1.1 >= jump)
+				self->vy /= 1.1;
+			else
+				self->vy = jump;
+		}
+
 		/*What to Do if Colliding*/
 		if(self->uCheck)
 		{
@@ -325,14 +343,22 @@ void PlayerThink(Entity *self)
 		}
 		if(self->lCheck)
 		{
-			if(!self->uCheck && self->vx > 0 && self->form != FM_NONE)self->vx = -abs(self->vx) + 2;
-			else self->vx = 0;
+			if(!self->right->movable)
+			{
+				if(!self->uCheck && self->form != FM_NONE)self->vx = -abs(self->vx) + 2;
+				else self->vx = 0;
+			}
+			else self->right->vx = self->vx / 2;
 			self->sx = collision.x - (self->bbox.x + self->bbox.w);
 		}
 		if(self->rCheck)
 		{
-			if(!self->uCheck && self->vx < 0 && self->form != FM_NONE)self->vx = abs(self->vx) - 2;
-			else self->vx = 0;
+			if(!self->left->movable)
+			{
+				if(!self->uCheck && self->form != FM_NONE)self->vx = abs(self->vx) - 2;
+				else self->vx = 0;
+			}
+			else self->left->vx = self->vx / 2;
 			self->sx = collision.w - self->bbox.x + 0.6;
 		}
 		if(self->form == FM_BALLOON1 || self->form == FM_BALLOON2)		/*Balloon Collisions*/
@@ -342,22 +368,26 @@ void PlayerThink(Entity *self)
 				self->vy = 1 + self->owner->above->vy;
 				self->sy = collision2.h + (self->owner->sprite->h - (self->owner->bbox.y + 12));
 			}
-			if(self->owner->lCheck)
+			if(self->owner != NULL)
 			{
-				if(!self->uCheck && (self->vx - self->owner->right->vx > 0))
+				if(self->owner->lCheck)
 				{
-					self->vx = -abs(int(self->vx - self->owner->right->vx) - (int(self->vx - self->owner->right->vx) % 2)) + 2;
-					self->sx = collision2.x - (self->owner->bbox.x + self->owner->bbox.w - 12);
-				}
-				else
-				{
-					if(self->uCheck && (self->vx + self->owner->right->vx != 0))
+					if(!self->uCheck && (self->vx - self->owner->right->vx > 0))
 					{
-						self->form = FM_NONE;
-						self->owner->owner = NULL;
-						self->owner = NULL;
-						self->above = self;
-						self->wait = 20;
+						self->vx = -abs(int(self->vx - self->owner->right->vx) - (int(self->vx - self->owner->right->vx) % 2)) + 2;
+						self->sx = collision2.x - (self->owner->bbox.x + self->owner->bbox.w - 12);
+					}
+					else
+					{
+						if(self->uCheck && (self->vx + self->owner->right->vx != 0))
+						{
+							self->owner->vx = -abs(self->owner->vx);
+							self->form = FM_NONE;
+							self->owner->owner = NULL;
+							self->owner = NULL;
+							self->above = self;
+							self->wait = 20;
+						}
 					}
 				}
 			}
@@ -374,6 +404,7 @@ void PlayerThink(Entity *self)
 					{
 						if(self->uCheck && (self->vx + self->owner->left->vx != 0))
 						{
+							self->owner->vx = abs(self->owner->vx);
 							self->form = FM_NONE;
 							self->owner->owner = NULL;
 							self->owner = NULL;
@@ -382,6 +413,23 @@ void PlayerThink(Entity *self)
 						}
 					}
 				}
+			}
+		}
+		if(self->form == FM_CHUTE)		/*Parachute collisions*/
+		{
+			if(self->owner->dCheck || self->owner->lCheck || self->owner->rCheck)
+			{
+				self->form = FM_NONE;
+				self->owner->health = 0;
+				self->owner->frame = 3;
+				self->owner->delay = 12;
+				self->owner = NULL;
+			}
+			if(self->uCheck)
+			{
+				FreeEntity(self->owner);
+				self->form = FM_NONE;
+				self->owner = NULL;
 			}
 		}
 				
@@ -393,7 +441,7 @@ void PlayerThink(Entity *self)
 		}
 			
 		/*Player Inputs*/
-		if(self->uCheck || self->form == FM_NONE)
+		if(self->uCheck || self->form == FM_NONE || self->form == FM_CHUTE)
 		{
 			if(((isKeyHeld(SDLK_a) && !self->rCheck) || (isKeyHeld(SDLK_d) && !self->lCheck)) && (self->state != ST_PUMP))
 			{
@@ -518,6 +566,12 @@ void PlayerThink(Entity *self)
 				self->vy = (self->vy + self->above->vy) / 2;
 			}
 		}
+
+		if(isKeyPressed(SDLK_p) && !self->uCheck && self->vy >= 0 && self->form == FM_NONE)		/*Pull out parachute*/
+		{
+			self->owner = MakeChute();
+			self->form = FM_CHUTE;
+		}
 	}
 
 
@@ -617,6 +671,7 @@ Entity *MakeBalloon()
 	balloon->lTang = 1;
 	balloon->rTang = 1;
 	balloon->dTang = 0;
+	balloon->movable = 1;
 	balloon->owner = Player;
 	return balloon;
 }
@@ -631,7 +686,7 @@ void BalloonThink(Entity *self)
 		self->state = Player->state;
 		self->form = Player->form;
 		self->isRight = Player->isRight;
-		self->vx = Player->vx;
+		self->vx = Player->vx / 1.5;
 		self->vy = Player->vy / 2.5;
 		self->sx = Player->sx - 12;
 		self->sy = Player->sy - 48;
@@ -853,6 +908,68 @@ void BalloonThink(Entity *self)
 	if(!self->isRight)self->frame += 8;
 }
 
+Entity *MakeChute()
+{
+	Entity *chute;
+	chute = NewEntity();
+	if(chute == NULL)return chute;
+	chute->sprite = LoadSprite("images/parachute.png", 68, 52);
+	chute->think = ChuteThink;
+	chute->shown = 1;
+	chute->layer = 1;
+	chute->frame = 0;
+	chute->sx = Player->sx - 4;
+	chute->sy = Player->sy - 52;
+	chute->bbox.x = 8;
+	chute->bbox.y = 4;
+	chute->bbox.w = 52;
+	chute->bbox.h = 48;
+	chute->delay = 4;
+	chute->tang = 1;
+	chute->uTang = 1;
+	chute->lTang = 1;
+	chute->rTang = 1;
+	chute->dTang = 0;
+	chute->movable = 0;
+	chute->health = 1;
+	chute->owner = Player;
+	return chute;
+}
+
+void ChuteThink(Entity *self)
+{
+	int i = 0;
+	SDL_Rect b1, collision;
+	
+	do
+	{
+		b1.x = self->sx + self->bbox.x + (self->vx * (i / 10));
+		b1.y = self->sy + self->bbox.y + (self->vy * (i / 10));
+		b1.w = self->bbox.w;
+		b1.h = self->bbox.h;
+		CheckCollisions(self, b1, &collision);
+		i++;
+	}
+	while(i <= 10);
+	
+	if(Player != NULL)
+	{
+		self->sx = Player->sx - 4;
+		self->sy = Player->sy - 52;
+	}
+
+	if(!self->delay)
+	{
+		if(self->frame < 2)
+		{
+			self->frame++;
+			self->delay = 4;
+		}
+		if(!self->health)FreeEntity(self);
+	}
+	else self->delay--;
+}
+
 Entity *BuildBrick(int x, int y)
 {
 	Entity *brick;
@@ -872,6 +989,7 @@ Entity *BuildBrick(int x, int y)
 	brick->lTang = 1;
 	brick->rTang = 1;
 	brick->dTang = 1;
+	brick->movable = 0;
 	return brick;
 }
 
@@ -894,6 +1012,7 @@ Entity *BuildColumn(int x, int y)
 	column->lTang = 0;
 	column->rTang = 1;
 	column->dTang = 1;
+	column->movable = 0;
 	return column;
 }
 
@@ -929,6 +1048,7 @@ Entity *BuildMovingPlatform(int x, int y, int a, int b)
 	plat->dTang = 0;
 	plat->lTang = 1;
 	plat->rTang = 1;
+	plat->movable = 0;
 	plat->health = x;			/*Point 1's x position*/
 	plat->delay = y;			/*Point 1's y position*/
 	plat->ct = a;			/*Point 2's x position*/
@@ -948,11 +1068,6 @@ void PlatThink(Entity *self)
 	{
 		self->sy += 2;
 		self->bbox.y -= 2;
-	}
-	else
-	{
-		//self->sy -= 2;
-		//self->bbox.y += 2;
 	}
 	
 	do
@@ -995,11 +1110,6 @@ void PlatThink(Entity *self)
 	{
 		self->sy -= 2;
 		self->bbox.y += 2;
-	}
-	else
-	{
-		//self->sy += 2;
-		//self->bbox.y -= 2;
 	}
 }
 
