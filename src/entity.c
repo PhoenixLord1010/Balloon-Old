@@ -251,7 +251,7 @@ void PlayerThink(Entity *self)
 			accel = 0.2;
 			decel = 0.2;
 			jump = 0.5;
-			flap = 0;
+			flap = self->vy;
 			break;
 		case FM_NONE:
 		default:
@@ -324,8 +324,8 @@ void PlayerThink(Entity *self)
 		/*Chute*/
 		if(self->form == FM_CHUTE && self->vy > jump)
 		{
-			if(self->vy / 1.1 >= jump)
-				self->vy /= 1.1;
+			if(self->vy / 1.15 >= jump)
+				self->vy /= 1.15;
 			else
 				self->vy = jump;
 		}
@@ -548,11 +548,22 @@ void PlayerThink(Entity *self)
 				
 		if(isKeyPressed(SDLK_o) && self->form != FM_NONE)	/*Detach*/
 		{
-			self->form = FM_NONE;
-			self->owner->owner = NULL;
-			self->owner = NULL;
-			self->above = self;
-			self->wait = 20;
+			if(self->form == FM_BALLOON1 || self->form == FM_BALLOON2)
+			{
+				self->form = FM_NONE;
+				self->owner->owner = NULL;
+				self->owner = NULL;
+				self->above = self;
+				self->wait = 20;
+			}
+			if(self->form == FM_CHUTE)
+			{
+				self->form = FM_NONE;
+				self->owner->health = 0;
+				self->owner->frame = 3;
+				self->owner->delay = 12;
+				self->owner = NULL;
+			}
 		}
 					
 		if(self->above != NULL && self->form == FM_NONE)	/*Reconnect*/
@@ -957,13 +968,14 @@ void ChuteThink(Entity *self)
 		self->sx = Player->sx - 4;
 		self->sy = Player->sy - 52;
 	}
+	else FreeEntity(self);
 
 	if(!self->delay)
 	{
 		if(self->frame < 2)
 		{
 			self->frame++;
-			self->delay = 4;
+			self->delay = 6;
 		}
 		if(!self->health)FreeEntity(self);
 	}
