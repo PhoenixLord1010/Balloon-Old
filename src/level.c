@@ -22,10 +22,11 @@ void RenderLevel(int level)
 			
 			BuildRoad(0, 600, 12);
 			BuildColumn(200, 600-64);
-			//BuildColumn(450, 600-128);
-			BuildMovingPlatform(300, 330, 300, 530);
-			BuildMovingPlatform(700, 530, 500, 530);
-			BuildMovingPlatform(400, 530, 541, 388);
+			//BuildMovingPlatform(300, 330, 300, 530);
+			//BuildMovingPlatform(700, 530, 500, 530);
+			//BuildMovingPlatform(400, 530, 541, 388);
+
+			MakeRocket();
 
 			CurrentSection++;
 		}

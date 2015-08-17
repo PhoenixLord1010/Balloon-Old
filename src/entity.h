@@ -11,7 +11,7 @@ Functions and stuff for handling entities
 #define MAXSTATES		20
 
 enum STATES {ST_IDLE, ST_WALK, ST_RUN, ST_SKID, ST_JUMP, ST_FLAP, ST_PUMP, ST_DYING};
-enum FORMS {FM_NONE, FM_BALLOON1, FM_BALLOON2, FM_CHUTE};
+enum FORMS {FM_NONE, FM_BALLOON1, FM_BALLOON2, FM_CHUTE, FM_ROCKET};
 
 typedef struct ENTITY_T
 {
@@ -61,6 +61,8 @@ Entity *MakeBalloon();
 void BalloonThink(Entity *self);
 Entity *MakeChute();
 void ChuteThink(Entity *self);
+Entity *MakeRocket();
+void RocketThink(Entity *self);
 Entity *BuildBrick(int x, int y);
 Entity *BuildColumn(int x, int y);
 void ObjectThink(Entity *self);
