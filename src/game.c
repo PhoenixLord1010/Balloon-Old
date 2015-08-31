@@ -10,6 +10,7 @@ extern SDL_Surface *background;
 extern SDL_Rect Camera;
 
 int windowed = 1;
+Entity *Empty;
 
 void Init_ALL();
 void Update_ALL();
@@ -22,6 +23,7 @@ int main(int argc, char *argv[])
 	Uint8 *keys;
 	
 	Init_ALL();
+	Empty = EmptyEnt();
 	do
 	{	
 		ResetBuffer();

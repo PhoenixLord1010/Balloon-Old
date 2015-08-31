@@ -15,7 +15,7 @@ Sprite SpriteList[MaxSprites];
 Uint32 NOW;
 
 int NumSprites;
-float xOffset;	//left side of screen
+float xOffset;
 float yOffset;
 
 Uint32 rmask,gmask,bmask,amask;

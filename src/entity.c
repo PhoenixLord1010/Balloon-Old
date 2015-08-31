@@ -7,6 +7,7 @@ extern SDL_Surface *screen;
 extern SDL_Rect Camera;
 extern float xOffset;
 extern float yOffset;
+extern Entity *Empty;
 
 Entity EntityList[MAXENTITIES];
 Entity *Player;
@@ -23,7 +24,7 @@ void InitEntityList()
 	int i, j;
 	NumEnts = 0;
 	for(i = 0; i < MAXENTITIES; i++)
-	{
+	{		
 		EntityList[i].used = 0;
 		EntityList[i].layer = 10;
 		EntityList[i].think = NULL;
@@ -142,14 +143,14 @@ void CheckCollisions(Entity *self, SDL_Rect box1, SDL_Rect *collision)
 	self->left = NULL;
 	self->right = NULL;
 
-	for(i = 0; i < MAXENTITIES; i++)
+	for(i = 1; i < MAXENTITIES; i++)
 	{
 		box2.x = EntityList[i].sx + EntityList[i].bbox.x;
 		box2.y = EntityList[i].sy + EntityList[i].bbox.y;
 		box2.w = EntityList[i].bbox.w;
 		box2.h = EntityList[i].bbox.h;
 
-		if(Collide(box1,box2) && self->sprite != EntityList[i].sprite)
+		if(Collide(box1,box2))
 		{
 			if(EntityList[i].tang)		/*Collision with tangible object*/
 			{
@@ -181,6 +182,28 @@ void CheckCollisions(Entity *self, SDL_Rect box1, SDL_Rect *collision)
 								   }
 							   }
 			}
+		}
+	}
+
+	if(self == Player || self->owner == Player)
+	{
+		if(box1.y <= yOffset)
+		{
+			self->dCheck = 1;
+			self->above = Empty;
+			collision->h = yOffset;
+		}
+		if(box1.x <= xOffset)
+		{
+			self->rCheck = 1;
+			self->left = Empty;
+			collision->w = xOffset;
+		}
+		if(box1.x + box1.w >= xOffset + screen->w)
+		{
+			self->lCheck = 1;
+			self->right = Empty;
+			collision->x = xOffset + screen->w;
 		}
 	}
 }
@@ -319,10 +342,7 @@ void PlayerThink(Entity *self)
 		if((self->vx == 0) && self->uCheck && uCheck2 && self->state != ST_PUMP)
 			self->state = ST_IDLE;
 
-		if(self->wait > 0)
-		{
-			self->wait--;
-		}
+		if(self->wait > 0)self->wait--;
 			
 		/*Gravity*/
 		if(self->vy <= gravity && !self->uCheck)
@@ -609,7 +629,7 @@ void PlayerThink(Entity *self)
 			}
 		}
 
-		if(((self->left != NULL && self->left->form == FM_ROCKET) || (self->right != NULL && self->right->form == FM_ROCKET)) && self->uCheck)	/*Connect with rocket*/
+		if(((self->left != NULL && self->left->form == FM_ROCKET && self->left->uCheck) || (self->right != NULL && self->right->form == FM_ROCKET && self->right->uCheck)) && self->form == FM_NONE)	/*Connect with rocket*/
 		{
 			self->form = FM_ROCKET;
 			if(self->left != NULL && self->left->form == FM_ROCKET)
@@ -1132,6 +1152,9 @@ void RocketThink(Entity *self)
 				self->vx /= 2;
 			else
 				self->vx = 0;
+
+			self->sx += self->below->vx;
+			self->sy += self->below->vy;
 		}
 		if(self->dCheck)
 			self->vy = abs(self->vy / 2);
@@ -1147,7 +1170,7 @@ void RocketThink(Entity *self)
 	}
 }
 
-Entity *BuildBrick(int x, int y)
+Entity *BuildBrick(int x, int y, int u, int l, int r, int d)
 {
 	Entity *brick;
 	brick = NewEntity();
@@ -1162,10 +1185,10 @@ Entity *BuildBrick(int x, int y)
 	brick->bbox.w = 64;
 	brick->bbox.h = 32;
 	brick->tang = 1;
-	brick->uTang = 1;
-	brick->lTang = 1;
-	brick->rTang = 1;
-	brick->dTang = 1;
+	brick->uTang = u;
+	brick->lTang = l;
+	brick->rTang = r;
+	brick->dTang = d;
 	brick->movable = 0;
 	return brick;
 }
@@ -1195,14 +1218,16 @@ Entity *BuildColumn(int x, int y)
 
 void ObjectThink(Entity *self)
 {
-	if(self->sx + self->bbox.w < xOffset)FreeEntity(self);
+	//if(self->sx + self->bbox.w < xOffset)FreeEntity(self);
 }
 
 void BuildRoad(int x, int y, int j)
 {
 	for(int i = 0; i < j; i++)
 	{
-		BuildBrick(x + (64 * i), y);
+		if(i == 0)BuildBrick(x + (64 * i), y, 1, 1, 0, 1);
+		else if(i == j)BuildBrick(x + (64 * i), y, 1, 0, 1, 1);
+			 else BuildBrick(x + (64 * i), y, 1, 0, 0, 1);
 	}
 }
 
@@ -1228,8 +1253,8 @@ Entity *BuildMovingPlatform(int x, int y, int a, int b)
 	plat->movable = 0;
 	plat->health = x;			/*Point 1's x position*/
 	plat->delay = y;			/*Point 1's y position*/
-	plat->ct = a;			/*Point 2's x position*/
-	plat->wait = b;			/*Point 2's y position*/
+	plat->ct = a;				/*Point 2's x position*/
+	plat->wait = b;				/*Point 2's y position*/
 	plat->isRight = 1;
 	return plat;
 }
@@ -1290,30 +1315,146 @@ void PlatThink(Entity *self)
 	}
 }
 
-Entity *BuildBoundary(int x, int y)
+Entity *BuildBound(int x, int y, int i)
 {
-	Entity *boundary;
-	boundary = NewEntity();
-	if(boundary == NULL)return boundary;
-	boundary->think = BoundaryThink;
-	boundary->isRight = x;
-	boundary->delay = y;
-	boundary->bbox.x = 0;
-	boundary->bbox.y = 0;
-	boundary->bbox.w = 64;
-	boundary->bbox.h = 720;
-	boundary->tang = 1;
-	boundary->uTang = 1;
-	boundary->lTang = 1;
-	boundary->rTang = 1;
-	boundary->dTang = 1;
-	return boundary;
+	Entity *bound;
+	bound = NewEntity();
+	if(bound == NULL)return bound;
+	bound->form = FM_WALL;
+	bound->sx = x;
+	bound->sy = y;
+	bound->bbox.x = 0;
+	bound->bbox.y = 0;
+	bound->bbox.w = 32;
+	bound->bbox.h = 32;
+	if(i)
+	{
+		bound->uTang = 0;
+		bound->lTang = 1;
+		bound->rTang = 1;
+		bound->dTang = 0;
+	}
+	else
+	{
+		bound->uTang = 1;
+		bound->lTang = 0;
+		bound->rTang = 0;
+		bound->dTang = 1;
+	}
+	bound->tang = 0;
+	return bound;
 }
 
-void BoundaryThink(Entity *self)
+Entity *BuildScreen()
 {
-	self->sx = self->isRight + xOffset;
-	self->sy = self->delay + yOffset;
+	Entity *scrn;
+	scrn = NewEntity();
+	if(scrn == NULL)return scrn;
+	scrn->think = ScreenThink;
+	scrn->sx = xOffset;
+	scrn->sy = yOffset;
+	scrn->bbox.x = 0;
+	scrn->bbox.y = 0;
+	scrn->bbox.w = screen->w;
+	scrn->bbox.h = screen->h;
+	scrn->isRight = 1;
+	scrn->tang = 0;
+	scrn->uTang = 1;
+	scrn->lTang = 1;
+	scrn->rTang = 1;
+	scrn->dTang = 1;
+	return scrn;
+}
+
+void ScreenThink(Entity *self)
+{
+	int i, j = 0;
+	SDL_Rect box1, box2;
+	
+	do
+	{
+		box1.x = self->sx + self->bbox.x;
+		box1.y = self->sy + self->bbox.y;
+		box1.w = self->bbox.w;
+		box1.h = self->bbox.h;
+
+		self->uCheck = 0;
+		self->dCheck = 0;
+		self->lCheck = 0;
+		self->rCheck = 0;
+		self->above = NULL;
+		self->below = NULL;
+		self->left = NULL;
+		self->right = NULL;
+
+		for(i = 0; i < MAXENTITIES; i++)
+		{
+			box2.x = EntityList[i].sx + EntityList[i].bbox.x;
+			box2.y = EntityList[i].sy + EntityList[i].bbox.y;
+			box2.w = EntityList[i].bbox.w;
+			box2.h = EntityList[i].bbox.h;
+
+			if(Collide(box1,box2))
+			{
+				if(EntityList[i].form == FM_WALL)		/*Collision with boundary*/
+				{
+					if((abs((box1.y + box1.h) - box2.y) <= abs((box1.x + box1.w) - box2.x)) && (abs((box1.y + box1.h) - box2.y) <= abs((box2.x + box2.w) - box1.x)) && (abs((box1.y + box1.h) - box2.y) <= abs((box2.y + box2.h) - box1.y)) && EntityList[i].uTang)
+					{
+						self->uCheck = 1;
+						self->below = &EntityList[i];
+					}
+					else if((abs((box1.x + box1.w) - box2.x) <= abs((box2.x + box2.w) - box1.x)) && (abs((box1.x + box1.w) - box2.x) <= abs((box2.y + box2.h) - box1.y)) && EntityList[i].lTang)
+						 {	 
+							 self->lCheck = 1;
+							 self->right = &EntityList[i];
+						 }
+						 else if((abs((box2.x + box2.w) - box1.x) <= abs((box2.y + box2.h) - box1.y)) && EntityList[i].rTang)
+							  {	  
+								  self->rCheck = 1;
+								  self->left = &EntityList[i];
+							  }
+							  else if(EntityList[i].dTang)
+								   {
+									   self->above = &EntityList[i];
+									   self->dCheck = 1;
+								   }
+				}
+			}
+		}
+	
+		if(Player != NULL)
+		{
+			if(((Player->sx + Player->sprite->w/2) >= (xOffset + (screen->w / 3))) && !self->lCheck && self->isRight)xOffset++;
+			if(((Player->sx + Player->sprite->w/2) <= (xOffset + (screen->w / 1.5))) && !self->rCheck && !self->isRight)xOffset--;
+			if(((Player->sy + Player->sprite->h/2) >= (yOffset + (screen->h / 1.67))) && !self->uCheck)yOffset++;
+			if(((Player->sy + Player->sprite->h/2) <= (yOffset + (screen->h / 2.5))) && !self->dCheck)yOffset--;
+
+			if((Player->sx + Player->sprite->w/2) <= (xOffset + (screen->w / 5)) && self->isRight)self->isRight = 0;
+			if((Player->sx + Player->sprite->w/2) >= (xOffset + (screen->w / 1.25)) && !self->isRight)self->isRight = 1;
+		}
+
+		self->sx = xOffset;
+		self->sy = yOffset;
+
+		j++;
+	}
+	while(j < 18);
+}
+
+Entity *EmptyEnt()
+{
+	Entity *empty;
+	empty = NewEntity();
+	if(empty == NULL)return empty;
+	empty->think = NULL;
+	empty->sprite = NULL;
+	empty->owner = NULL;
+	empty->sx = 0;
+	empty->sy = 0;
+	empty->vx = 0;
+	empty->vy = 0;
+	empty->movable = 0;
+	return empty;
 }
 
 
