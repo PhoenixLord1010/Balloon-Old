@@ -24,7 +24,7 @@ ScreenData S_Data;
 
 void Init_Graphics(int windowed)
 {
-	Uint32 Vflags =	SDL_ANYFORMAT | SDL_SRCALPHA;		//SDL_FULLSCREEN | SDL_ANYFORMAT;
+	Uint32 Vflags =	SDL_ANYFORMAT | SDL_SRCALPHA;
 	Uint32 HWflag = 0;
 	SDL_Surface *temp;
 	S_Data.xres = 960;
@@ -47,28 +47,25 @@ void Init_Graphics(int windowed)
 		exit(1);
 	}
 	atexit(SDL_Quit);
-	if(SDL_VideoModeOK(1024, 720, 32, Vflags | SDL_HWSURFACE))		//SDL_FULLSCREEN | SDL_ANYFORMAT | SDL_HWSURFACE))
+	if(SDL_VideoModeOK(1024, 720, 32, Vflags | SDL_HWSURFACE))
 	{
-		S_Data.xres = 960;	//1280;
+		S_Data.xres = 960;
 		S_Data.yres = 720;
 		S_Data.depth = 32;
-		//Vflags = SDL_FULLSCREEN | SDL_ANYFORMAT | SDL_HWSURFACE;
 		HWflag = SDL_HWSURFACE;
 	}
-	else if(SDL_VideoModeOK(960, 720, 16,	Vflags | SDL_HWSURFACE))	//SDL_FULLSCREEN | SDL_ANYFORMAT | SDL_HWSURFACE))
+	else if(SDL_VideoModeOK(960, 720, 16,	Vflags | SDL_HWSURFACE))
 		 {
 			 S_Data.xres = 960;
 			 S_Data.yres = 720;
 			 S_Data.depth = 16;
-			 //Vflags = SDL_FULLSCREEN | SDL_ANYFORMAT | SDL_HWSURFACE;
 			 HWflag = SDL_HWSURFACE;
 		 }
-		 else if(SDL_VideoModeOK(960, 720, 16,	Vflags))		//SDL_FULLSCREEN | SDL_ANYFORMAT))
+		 else if(SDL_VideoModeOK(960, 720, 16,	Vflags))
 			  {
 				  S_Data.xres = 960;
 				  S_Data.yres = 720;
 				  S_Data.depth = 16;
-				  //Vflags = SDL_FULLSCREEN | SDL_ANYFORMAT;
 				  HWflag = SDL_SWSURFACE;
 			  }
 	videobuffer = SDL_SetVideoMode(S_Data.xres, S_Data.yres, S_Data.depth, Vflags | HWflag);
@@ -77,7 +74,7 @@ void Init_Graphics(int windowed)
 		fprintf(stderr, "Unable to set 1024x600 video: %s\n", SDL_GetError());
 		exit(1);
 	}
-	temp = SDL_CreateRGBSurface(HWflag/*SDL_HWSURFACE*/, S_Data.xres, S_Data.yres, S_Data.depth, rmask, gmask, bmask, amask);
+	temp = SDL_CreateRGBSurface(HWflag, S_Data.xres, S_Data.yres, S_Data.depth, rmask, gmask, bmask, amask);
 	if(temp == NULL)
 	{
 		fprintf(stderr, "Couldn't initialise background buffer: %s\n", SDL_GetError());
@@ -85,7 +82,7 @@ void Init_Graphics(int windowed)
 	}
 	screen = SDL_DisplayFormat(temp);
 	SDL_FreeSurface(temp);
-	temp = SDL_CreateRGBSurface(HWflag/*Vflags*/, 1920, 720, S_Data.depth, rmask, gmask, bmask, amask);
+	temp = SDL_CreateRGBSurface(HWflag, 1920, 720, S_Data.depth, rmask, gmask, bmask, amask);
 	if(temp == NULL)
 	{
 		fprintf(stderr, "Couldn't initialise background buffer: %s\n", SDL_GetError());

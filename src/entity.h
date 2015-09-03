@@ -44,6 +44,11 @@ typedef struct ENTITY_T
 	int health;					/*Current health*/
 }Entity;
 
+typedef struct COLL_T
+{
+	float x, y, w, h;
+}Collision;
+
 /*General Entity Stuff*/
 void InitEntityList();
 void ClearEntities();

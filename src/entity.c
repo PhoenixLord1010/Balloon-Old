@@ -129,7 +129,7 @@ int Collide(SDL_Rect box1, SDL_Rect box2)
 	return 0;
 }
 
-void CheckCollisions(Entity *self, SDL_Rect box1, SDL_Rect *collision)
+void CheckCollisions(Entity *self, SDL_Rect box1, Collision *collision)
 {
 	int i = 0;
 	SDL_Rect box2;
@@ -154,25 +154,25 @@ void CheckCollisions(Entity *self, SDL_Rect box1, SDL_Rect *collision)
 		{
 			if(EntityList[i].tang)		/*Collision with tangible object*/
 			{
-				if((abs((box1.y + box1.h) - box2.y) <= 12) && (abs((box1.y + box1.h) - box2.y) <= abs((box1.x + box1.w) - box2.x)) && (abs((box1.y + box1.h) - box2.y) <= abs((box2.x + box2.w) - box1.x)) && (abs((box1.y + box1.h) - box2.y) <= abs((box2.y + box2.h) - box1.y)) && (self->vy + 2 >= EntityList[i].vy) && EntityList[i].uTang)
+				if((abs((box1.y + box1.h) - box2.y) <= 10) && (abs((box1.y + box1.h) - box2.y) <= abs((box1.x + box1.w) - box2.x)) && (abs((box1.y + box1.h) - box2.y) <= abs((box2.x + box2.w) - box1.x)) && (abs((box1.y + box1.h) - box2.y) <= abs((box2.y + box2.h) - box1.y)) && (self->vy + 2 >= EntityList[i].vy) && EntityList[i].uTang)
 				{
 					self->uCheck = 1;
 					self->below = &EntityList[i];
 					collision->y = box2.y;
 				}
-				else if((abs((box1.x + box1.w) - box2.x) <= 12) && (abs((box1.x + box1.w) - box2.x) <= abs((box2.x + box2.w) - box1.x)) && (abs((box1.x + box1.w) - box2.x) <= abs((box2.y + box2.h) - box1.y)) && (self->vx >= EntityList[i].vx) && EntityList[i].lTang)
+				else if((abs((box1.x + box1.w) - box2.x) <= 10) && (abs((box1.x + box1.w) - box2.x) <= abs((box2.x + box2.w) - box1.x)) && (abs((box1.x + box1.w) - box2.x) <= abs((box2.y + box2.h) - box1.y)) && (self->vx >= EntityList[i].vx) && EntityList[i].lTang)
 					 {	 
 						 self->lCheck = 1;
 						 self->right = &EntityList[i];
 						 collision->x = box2.x;
 					 }
-					 else if((abs((box2.x + box2.w) - box1.x) <= 12) && (abs((box2.x + box2.w) - box1.x) <= abs((box2.y + box2.h) - box1.y)) && (self->vx <= EntityList[i].vx) && EntityList[i].rTang)
+					 else if((abs((box2.x + box2.w) - box1.x) <= 10) && (abs((box2.x + box2.w) - box1.x) <= abs((box2.y + box2.h) - box1.y)) && (self->vx <= EntityList[i].vx) && EntityList[i].rTang)
 						  {	  
 							  self->rCheck = 1;
 							  self->left = &EntityList[i];
 							  collision->w = box2.x + box2.w;
 						  }
-						  else if((abs((box2.y + box2.h) - box1.y) <= 12) && (self->vy <= EntityList[i].vy))
+						  else if((abs((box2.y + box2.h) - box1.y) <= 10) && (self->vy <= EntityList[i].vy))
 							   {
 								   self->above = &EntityList[i];
 								   if(EntityList[i].dTang)
@@ -245,7 +245,8 @@ void PlayerThink(Entity *self)
 {
 	int i = 0;
 	int uCheck2 = self->uCheck;
-	SDL_Rect b1, collision, collision2;
+	SDL_Rect b1;
+	Collision collision, collision2;
 
 	float grav, speed, accel, decel, jump, flap;
 
@@ -392,7 +393,7 @@ void PlayerThink(Entity *self)
 		{
 			if(self->owner->dCheck)
 			{
-				self->vy = 1 + self->owner->above->vy;
+ 				self->vy = 1 + self->owner->above->vy;
 				self->sy = collision2.h + (self->owner->sprite->h - (self->owner->bbox.y + 12));
 			}
 			if(self->owner != NULL)
@@ -757,7 +758,8 @@ Entity *MakeBalloon()
 void BalloonThink(Entity *self)
 {
 	int i = 0;
-	SDL_Rect b1, collision;
+	SDL_Rect b1;
+	Collision collision;
 	
 	if(self->owner == Player && Player != NULL)
 	{
@@ -1017,7 +1019,8 @@ Entity *MakeChute()
 void ChuteThink(Entity *self)
 {
 	int i = 0;
-	SDL_Rect b1, collision;
+	SDL_Rect b1;
+	Collision collision;
 	
 	do
 	{
@@ -1060,7 +1063,7 @@ Entity *MakeRocket()
 	rocket->layer = 1;
 	rocket->frame = 0;
 	rocket->form = FM_ROCKET;
-	rocket->sx = 500;
+	rocket->sx = 1200;
 	rocket->sy = 300;
 	rocket->bbox.x = 8;
 	rocket->bbox.y = 0;
@@ -1080,7 +1083,8 @@ Entity *MakeRocket()
 void RocketThink(Entity *self)
 {
 	int i = 0;
-	SDL_Rect b1, collision;
+	SDL_Rect b1;
+	Collision collision;
 	
 	if(self->owner == Player && Player != NULL)
 	{
@@ -1209,7 +1213,7 @@ Entity *BuildColumn(int x, int y)
 	column->bbox.h = 64;
 	column->tang = 1;
 	column->uTang = 1;
-	column->lTang = 1;
+	column->lTang = 0;
 	column->rTang = 1;
 	column->dTang = 1;
 	column->movable = 0;
@@ -1262,7 +1266,8 @@ Entity *BuildMovingPlatform(int x, int y, int a, int b)
 void PlatThink(Entity *self)
 {
 	int i = 0;
-	SDL_Rect b1, collision;
+	SDL_Rect b1;
+	Collision collision;
 	float px, py, pz, hyp;
 	float speed = 2;
 	
@@ -1329,16 +1334,16 @@ Entity *BuildBound(int x, int y, int i)
 	bound->bbox.h = 32;
 	if(i)
 	{
-		bound->uTang = 0;
+		bound->uTang = 1;
 		bound->lTang = 1;
 		bound->rTang = 1;
-		bound->dTang = 0;
+		bound->dTang = 1;
 	}
 	else
 	{
 		bound->uTang = 1;
-		bound->lTang = 0;
-		bound->rTang = 0;
+		bound->lTang = 1;
+		bound->rTang = 1;
 		bound->dTang = 1;
 	}
 	bound->tang = 0;
@@ -1398,34 +1403,34 @@ void ScreenThink(Entity *self)
 			{
 				if(EntityList[i].form == FM_WALL)		/*Collision with boundary*/
 				{
-					if((abs((box1.y + box1.h) - box2.y) <= abs((box1.x + box1.w) - box2.x)) && (abs((box1.y + box1.h) - box2.y) <= abs((box2.x + box2.w) - box1.x)) && (abs((box1.y + box1.h) - box2.y) <= abs((box2.y + box2.h) - box1.y)) && EntityList[i].uTang)
+					if((abs((box1.y + box1.h) - box2.y) < abs((box1.x + box1.w) - box2.x)) && (abs((box1.y + box1.h) - box2.y) < abs((box2.x + box2.w) - box1.x)) && (abs((box1.y + box1.h) - box2.y) < abs((box2.y + box2.h) - box1.y)) && EntityList[i].uTang)
 					{
 						self->uCheck = 1;
 						self->below = &EntityList[i];
 					}
-					else if((abs((box1.x + box1.w) - box2.x) <= abs((box2.x + box2.w) - box1.x)) && (abs((box1.x + box1.w) - box2.x) <= abs((box2.y + box2.h) - box1.y)) && EntityList[i].lTang)
-						 {	 
-							 self->lCheck = 1;
-							 self->right = &EntityList[i];
-						 }
-						 else if((abs((box2.x + box2.w) - box1.x) <= abs((box2.y + box2.h) - box1.y)) && EntityList[i].rTang)
-							  {	  
-								  self->rCheck = 1;
-								  self->left = &EntityList[i];
-							  }
-							  else if(EntityList[i].dTang)
-								   {
-									   self->above = &EntityList[i];
-									   self->dCheck = 1;
-								   }
+					if((abs((box1.x + box1.w) - box2.x) < abs((box1.y + box1.h) - box2.y)) && (abs((box1.x + box1.w) - box2.x) < abs((box2.x + box2.w) - box1.x)) && (abs((box1.x + box1.w) - box2.x) < abs((box2.y + box2.h) - box1.y)) && EntityList[i].lTang)
+					{	 
+						self->lCheck = 1;
+						self->right = &EntityList[i];
+					}
+					if((abs((box2.x + box2.w) - box1.x) < abs((box1.x + box1.w) - box2.x)) && (abs((box2.x + box2.w) - box1.x) < abs((box1.y + box1.h) - box2.y)) && (abs((box2.x + box2.w) - box1.x) < abs((box2.y + box2.h) - box1.y)) && EntityList[i].rTang)
+					{	  
+						self->rCheck = 1;
+						self->left = &EntityList[i];
+					}
+					if((abs((box2.y + box2.h) - box1.y) < abs((box1.x + box1.w) - box2.x)) && (abs((box2.y + box2.h) - box1.y) < abs((box2.x + box2.w) - box1.x)) && (abs((box2.y + box2.h) - box1.y) < abs((box1.y + box1.h) - box2.y)) && EntityList[i].dTang)
+					{
+						self->dCheck = 1;
+						self->above = &EntityList[i];
+					}
 				}
 			}
 		}
 	
 		if(Player != NULL)
 		{
-			if(((Player->sx + Player->sprite->w/2) >= (xOffset + (screen->w / 3))) && !self->lCheck && self->isRight)xOffset++;
-			if(((Player->sx + Player->sprite->w/2) <= (xOffset + (screen->w / 1.5))) && !self->rCheck && !self->isRight)xOffset--;
+			if(((Player->sx + Player->sprite->w/2) >= (xOffset + (screen->w / 2.5))) && !self->lCheck && self->isRight)xOffset++;
+			if(((Player->sx + Player->sprite->w/2) <= (xOffset + (screen->w / 1.67))) && !self->rCheck && !self->isRight)xOffset--;
 			if(((Player->sy + Player->sprite->h/2) >= (yOffset + (screen->h / 1.67))) && !self->uCheck)yOffset++;
 			if(((Player->sy + Player->sprite->h/2) <= (yOffset + (screen->h / 2.5))) && !self->dCheck)yOffset--;
 
